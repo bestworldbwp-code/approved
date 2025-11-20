@@ -15,7 +15,6 @@ const CONFIG = {
     bossEmail: 'bestworld.bwp328@gmail.com',          // อีเมลหัวหน้า
     purchasingEmail: 'jakkidmarat@gmail.coms' // อีเมลจัดซื้อ
 }; // <--- อย่าลืมปิดวงเล็บปีกกาและเซมิโคลอนตรงนี้!
-
 // ==========================================
 const db = supabase.createClient(CONFIG.supaUrl, CONFIG.supaKey);
 if(typeof emailjs !== 'undefined') emailjs.init(CONFIG.emailPublicKey);
@@ -37,7 +36,7 @@ window.addItemRow = function() {
             <div class="col-md-2"><label class="small text-muted">หน่วย</label><input type="text" class="form-control item-unit"></div>
         </div>
         <div class="text-end mt-2">
-            <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeRow('${rowId}')">ลบรายการนี้</button>
+            <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeRow('${rowId}')">🗑️ ลบรายการนี้</button>
         </div>
     </div>`;
     container.insertAdjacentHTML('beforeend', html);
@@ -102,9 +101,7 @@ if (prForm) {
             // 3. ส่งเมลหาหัวหน้า
             btn.innerText = '⏳ กำลังส่งอีเมล...';
             
-            // ใช้ origin + /admin.html
             const adminLink = window.location.origin + '/admin.html';
-
             const bossHtml = `
                 <h3>เรียน หัวหน้างาน,</h3>
                 <p>มีรายการขอซื้อใหม่เข้ามา รอการอนุมัติครับ</p>
@@ -232,13 +229,11 @@ window.finalizeApproval = async function() {
     if(btn) { btn.disabled = true; btn.innerText = '⏳ กำลังส่งเมล...'; }
 
     try {
-        // 1. อัปเดตสถานะใบใหญ่
         await db.from('purchase_requests').update({ status: 'processed', items: currentPR.items }).eq('id', currentPR.id);
         
-        // [LINK FIX] ใช้ origin + view_pr.html
         const printLink = window.location.origin + `/view_pr.html?id=${currentPR.id}`;
 
-        // 2. สร้างตาราง HTML
+        // ตาราง HTML
         let staffTable = `<table style="width:100%; border-collapse: collapse; border: 1px solid #ddd;"><tr style="background-color: #f8f9fa;"><th style="border: 1px solid #ddd; padding: 8px;">รายการ</th><th style="border: 1px solid #ddd; padding: 8px;">จำนวน</th><th style="border: 1px solid #ddd; padding: 8px;">ผลการพิจารณา</th></tr>`;
         let purchasingTable = `<table style="width:100%; border-collapse: collapse; border: 1px solid #ddd;"><tr style="background-color: #d4edda;"><th style="border: 1px solid #ddd; padding: 8px;">รหัส</th><th style="border: 1px solid #ddd; padding: 8px;">รายการ (อนุมัติแล้ว)</th><th style="border: 1px solid #ddd; padding: 8px;">จำนวน</th></tr>`;
         let hasApprovedItems = false;
@@ -255,38 +250,46 @@ window.finalizeApproval = async function() {
         staffTable += `</table>`;
         purchasingTable += `</table>`;
 
-        // 3. ส่งเมลหา Staff
-        const staffHtml = `
-            <h3>เรียน คุณ ${currentPR.requester}</h3>
-            <p>ผลการอนุมัติใบขอซื้อเลขที่ <b>${currentPR.pr_number}</b>:</p>
-            ${staffTable}
-            <br>
-            <p>ดูเอกสารฉบับเต็มและพิมพ์ PDF: <a href="${printLink}">คลิกที่นี่</a></p>
-        `;
-        await emailjs.send(CONFIG.emailServiceId, CONFIG.emailTemplateId_Master, {
-            to_email: currentPR.email,
-            subject: `[Result] ผลการอนุมัติ PR ${currentPR.pr_number}`,
-            html_content: staffHtml
-        });
-
-        // 4. ส่งเมลหา จัดซื้อ
-        if(hasApprovedItems) {
-            const purchasingHtml = `
-                <h3>เรียน ฝ่ายจัดซื้อ</h3>
-                <p>ใบขอซื้อเลขที่ <b>${currentPR.pr_number}</b> ได้รับการอนุมัติแล้ว</p>
-                <p>ผู้ขอ: ${currentPR.requester} | แผนก: ${currentPR.department}</p>
-                ${purchasingTable}
+        // --- ส่งเมลหา Staff (ตรวจสอบอีเมลก่อนส่ง) ---
+        let requesterEmail = currentPR.email ? currentPR.email.trim() : '';
+        if (requesterEmail && requesterEmail.includes('@')) {
+            const staffHtml = `
+                <h3>เรียน คุณ ${currentPR.requester}</h3>
+                <p>ผลการอนุมัติใบขอซื้อเลขที่ <b>${currentPR.pr_number}</b>:</p>
+                ${staffTable}
                 <br>
-                <p>ลิงก์เอกสาร: <a href="${printLink}">คลิกที่นี่</a></p>
+                <p>ดูเอกสารฉบับเต็มและพิมพ์ PDF: <a href="${printLink}">คลิกที่นี่</a></p>
             `;
             await emailjs.send(CONFIG.emailServiceId, CONFIG.emailTemplateId_Master, {
-                to_email: CONFIG.purchasingEmail,
-                subject: `[Approved] อนุมัติสั่งซื้อ PR ${currentPR.pr_number}`,
-                html_content: purchasingHtml
+                to_email: requesterEmail,
+                subject: `[Result] ผลการอนุมัติ PR ${currentPR.pr_number}`,
+                html_content: staffHtml
             });
+        } else {
+            console.warn("Skip sending to staff: Invalid email");
         }
 
-        alert('✅ บันทึกผลและแจ้งเตือนทางเมลเรียบร้อย!');
+        // --- ส่งเมลหา จัดซื้อ (ตรวจสอบอีเมลก่อนส่ง) ---
+        if(hasApprovedItems) {
+            let purchaseEmail = CONFIG.purchasingEmail ? CONFIG.purchasingEmail.trim() : '';
+            if (purchaseEmail && purchaseEmail.includes('@')) {
+                const purchasingHtml = `
+                    <h3>เรียน ฝ่ายจัดซื้อ</h3>
+                    <p>ใบขอซื้อเลขที่ <b>${currentPR.pr_number}</b> ได้รับการอนุมัติแล้ว</p>
+                    <p>ผู้ขอ: ${currentPR.requester} | แผนก: ${currentPR.department}</p>
+                    ${purchasingTable}
+                    <br>
+                    <p>ลิงก์เอกสาร: <a href="${printLink}">คลิกที่นี่</a></p>
+                `;
+                await emailjs.send(CONFIG.emailServiceId, CONFIG.emailTemplateId_Master, {
+                    to_email: purchaseEmail,
+                    subject: `[Approved] อนุมัติสั่งซื้อ PR ${currentPR.pr_number}`,
+                    html_content: purchasingHtml
+                });
+            }
+        }
+
+        alert('✅ บันทึกผลเรียบร้อย!');
         bootstrap.Modal.getInstance(document.getElementById('detailModal')).hide();
         loadPendingPRs();
 
