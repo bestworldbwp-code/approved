@@ -4,7 +4,7 @@ const CONFIG = {
     supaKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB1ZmRkd2RjcHVnaWx3bGF2YmFuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkzODY1MDUsImV4cCI6MjA3NDk2MjUwNX0.6dyYteDu6QSkTL9hIiaHw_2WeltSGSIoMSvx3OcEjN0', 
     
     emailPublicKey: 'rEly1Il6Xz0qZwaSc',   
-    emailServiceId: 'YOUR_SERVICE_ID',   
+    emailServiceId: 'service_tolm3pu',   
     emailTemplateId_Master: 'service_tolm3pu', 
 
     bossEmail: 'bestworld.bwp328@gmail.com',          
@@ -355,4 +355,5 @@ async function loadPRForPrint() {
 
 if(document.getElementById('v_tableBody')) window.onload = loadPRForPrint;
 if(document.getElementById('prTableBody')) window.onload = loadPRs;
+
 
