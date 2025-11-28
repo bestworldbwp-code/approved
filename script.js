@@ -5,7 +5,7 @@ const CONFIG = {
     
     emailPublicKey: 'rEly1Il6Xz0qZwaSc',   
     emailServiceId: 'service_tolm3pu',   
-    emailTemplateId_Master: 'service_tolm3pu', 
+    emailTemplateId_Master: 'template_master', 
 
     bossEmail: 'bestworld.bwp328@gmail.com',          
     purchasingEmail: 'jakkidmarat@gmail.com',
@@ -355,5 +355,6 @@ async function loadPRForPrint() {
 
 if(document.getElementById('v_tableBody')) window.onload = loadPRForPrint;
 if(document.getElementById('prTableBody')) window.onload = loadPRs;
+
 
 
