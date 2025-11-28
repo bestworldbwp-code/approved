@@ -10,7 +10,7 @@ const CONFIG = {
     emailTemplateId_Master: 'template_master', // ใช้ Template เดียว
 
     // อีเมลผู้รับ
-    bossEmail: 'besstworld.bwp328@gmail.com',          
+    bossEmail: 'bestworld.bwp328@gmail.com',          
     purchasingEmail: 'jakkidmarat@gmail.com',
 
     // รหัสผ่านเข้าหน้า Admin
@@ -396,3 +396,4 @@ async function loadPRForPrint() {
 
 if(document.getElementById('v_tableBody')) window.onload = loadPRForPrint;
 if(document.getElementById('prTableBody')) window.onload = loadPRs;
+
