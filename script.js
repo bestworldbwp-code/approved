@@ -17,17 +17,17 @@ const CONFIG = {
     adminPassword: '1234' 
 };
 
-// ================= 2. SYSTEM START =================
+// ================= 2. SYSTEM INITIALIZATION =================
 const db = supabase.createClient(CONFIG.supaUrl, CONFIG.supaKey);
 if(typeof emailjs !== 'undefined') emailjs.init(CONFIG.emailPublicKey);
 
 document.addEventListener("DOMContentLoaded", function() {
-    // 1. โหลด Logo จาก logo.js
+    // โหลด Logo (ถ้ามีไฟล์ logo.js หรือตัวแปรนี้อยู่)
     if (typeof LOGO_BASE64 !== 'undefined') {
         document.querySelectorAll('.app-logo').forEach(img => img.src = LOGO_BASE64);
     }
 
-    // 2. ล็อกหน้า Admin
+    // ล็อกหน้า Admin
     if (window.location.href.includes('admin.html')) {
         if (!sessionStorage.getItem('isAdmin')) {
             setTimeout(() => {
@@ -68,7 +68,6 @@ if (prForm) {
         btn.disabled = true; 
 
         try {
-            // Upload
             let publicUrl = null;
             const fileInput = document.getElementById('attachment');
             if (fileInput.files.length > 0) {
@@ -82,7 +81,6 @@ if (prForm) {
                 publicUrl = urlData.publicUrl;
             }
 
-            // Gather Data
             btn.innerText = '⏳ กำลังบันทึก...';
             const items = [];
             document.querySelectorAll('.item-row').forEach(row => {
@@ -111,7 +109,6 @@ if (prForm) {
             const { error } = await db.from('purchase_requests').insert([payload]);
             if (error) throw error;
 
-            // Send Mail
             btn.innerText = '⏳ กำลังส่งอีเมล...';
             const adminLink = window.location.origin + '/admin.html';
             const bossHtml = `
@@ -120,10 +117,9 @@ if (prForm) {
                 <ul>
                     <li><b>เลขที่ PR:</b> ${payload.pr_number}</li>
                     <li><b>ผู้ขอ:</b> ${payload.requester}</li>
-                    <li><b>แผนก:</b> ${payload.department}</li>
                     <li><b>จำนวนรายการ:</b> ${items.length} รายการ</li>
                 </ul>
-                <p>กรุณาตรวจสอบและอนุมัติที่ลิงก์นี้: <a href="${adminLink}">คลิกเพื่ออนุมัติ</a></p>
+                <p>ตรวจสอบและอนุมัติ: <a href="${adminLink}">คลิกที่นี่</a></p>
             `;
 
             await emailjs.send(CONFIG.emailServiceId, CONFIG.emailTemplateId_Master, {
@@ -150,15 +146,11 @@ let allPRs = []; let currentPR = {}; let currentMode = 'pending';
 window.switchTab = function(mode) {
     currentMode = mode;
     if (mode === 'pending') {
-        document.getElementById('btnPending').classList.add('active', 'btn-primary');
-        document.getElementById('btnPending').classList.remove('btn-outline-primary');
-        document.getElementById('btnHistory').classList.remove('active', 'btn-secondary');
-        document.getElementById('btnHistory').classList.add('btn-outline-secondary');
+        document.getElementById('btnPending').className = 'btn btn-primary active';
+        document.getElementById('btnHistory').className = 'btn btn-outline-secondary';
     } else {
-        document.getElementById('btnHistory').classList.add('active', 'btn-secondary');
-        document.getElementById('btnHistory').classList.remove('btn-outline-secondary');
-        document.getElementById('btnPending').classList.remove('active', 'btn-primary');
-        document.getElementById('btnPending').classList.add('btn-outline-primary');
+        document.getElementById('btnHistory').className = 'btn btn-secondary active';
+        document.getElementById('btnPending').className = 'btn btn-outline-primary';
     }
     loadPRs();
 }
@@ -229,17 +221,21 @@ window.openDetailModal = function(id) {
 
 function renderItemsTable() {
     const itemsTable = document.getElementById('m_itemsTable');
-    const headerRow = document.querySelector('#m_itemsTable').previousElementSibling.querySelector('tr');
     
-    headerRow.innerHTML = `
-        <th class="text-center" width="5%"><input type="checkbox" id="selectAll" class="form-check-input" onclick="toggleSelectAll(this)" checked></th>
-        <th width="15%">รหัส</th><th>รายละเอียด</th><th class="text-center" width="10%">จำนวน</th><th class="text-center" width="10%">หน่วย</th><th width="25%">เหตุผล (ถ้าไม่อนุมัติ)</th>`;
+    // Header พร้อม Checkbox Select All
+    const headerRow = document.querySelector('#m_itemsTable').previousElementSibling.querySelector('tr');
+    if (headerRow) {
+        headerRow.innerHTML = `
+            <th class="text-center" width="5%"><input type="checkbox" id="selectAll" class="form-check-input" onclick="toggleSelectAll(this)" checked></th>
+            <th width="15%">รหัส</th><th>รายละเอียด</th><th class="text-center" width="10%">จำนวน</th><th class="text-center" width="10%">หน่วย</th><th width="25%">เหตุผล (ถ้าไม่อนุมัติ)</th>`;
+    }
 
     itemsTable.innerHTML = '';
     if (currentPR.items) {
         currentPR.items.forEach((item, index) => {
             const isChecked = (item.status === 'approved' || item.status === 'pending');
             const reasonStyle = isChecked ? 'display:none;' : 'display:block;';
+            const statusStyle = isChecked ? 'display:inline;' : 'display:none;';
             const reasonVal = item.remark || '';
             const rowClass = isChecked ? '' : 'table-danger';
 
@@ -254,15 +250,17 @@ function renderItemsTable() {
                     <td class="text-center">${item.unit}</td>
                     <td>
                         <input type="text" class="form-control form-control-sm item-reason" id="reason-${index}" placeholder="ระบุเหตุผล..." value="${reasonVal}" style="${reasonStyle}">
-                        <span id="status-text-${index}" class="text-success small fw-bold" style="${!isChecked ? 'display:none;' : ''}">✅ อนุมัติ</span>
+                        <span id="status-text-${index}" class="text-success small fw-bold" style="${statusStyle}">✅ อนุมัติ</span>
                     </td>
                 </tr>`;
             itemsTable.innerHTML += row;
         });
     }
+    
     if(currentMode === 'history') {
         document.querySelectorAll('input[type="checkbox"], .item-reason').forEach(el => el.disabled = true);
-        document.getElementById('selectAll').style.display = 'none';
+        const selectAll = document.getElementById('selectAll');
+        if(selectAll) selectAll.style.display = 'none';
     }
 }
 
@@ -290,6 +288,9 @@ window.toggleItem = function(checkbox, index) {
     }
 }
 
+// ----------------------------------------------------
+// ฟังก์ชันบันทึกและส่งเมล (แก้ไขล่าสุด)
+// ----------------------------------------------------
 window.finalizeApproval = async function() {
     const checkboxes = document.querySelectorAll('.item-checkbox');
     let hasRejectedWithoutReason = false;
@@ -320,42 +321,68 @@ window.finalizeApproval = async function() {
 
     try {
         await db.from('purchase_requests').update({ status: 'processed', items: currentPR.items }).eq('id', currentPR.id);
-        const printLink = window.location.origin + `/view_pr.html?id=${currentPR.id}`;
+        
+        // สร้าง 2 ลิงก์
+        const baseUrl = window.location.origin + `/view_pr.html?id=${currentPR.id}`;
+        const linkAll = baseUrl; 
+        const linkApproved = baseUrl + "&filter=approved";
 
+        // ตาราง HTML
         let staffTable = `<table style="width:100%;border-collapse:collapse;border:1px solid #ddd;"><tr style="background:#f8f9fa;"><th style="padding:8px;border:1px solid #ddd;">รายการ</th><th style="padding:8px;border:1px solid #ddd;">จำนวน</th><th style="padding:8px;border:1px solid #ddd;">ผล</th></tr>`;
-        let purchasingTable = `<table style="width:100%;border-collapse:collapse;border:1px solid #ddd;"><tr style="background:#d4edda;"><th style="padding:8px;border:1px solid #ddd;">รหัส</th><th style="padding:8px;border:1px solid #ddd;">รายการ</th><th style="padding:8px;border:1px solid #ddd;">จำนวน</th></tr>`;
         let hasApprovedItems = false;
 
         currentPR.items.forEach(i => {
             const color = i.status === 'approved' ? 'green' : 'red';
             const statusText = i.status === 'approved' ? '✅ อนุมัติ' : `❌ ไม่ผ่าน (${i.remark})`;
             staffTable += `<tr><td style="padding:8px;border:1px solid #ddd;">${i.description}</td><td style="padding:8px;border:1px solid #ddd;">${i.quantity} ${i.unit}</td><td style="padding:8px;border:1px solid #ddd;color:${color};font-weight:bold;">${statusText}</td></tr>`;
-            if(i.status === 'approved') {
-                hasApprovedItems = true;
-                purchasingTable += `<tr><td style="padding:8px;border:1px solid #ddd;">${i.code||'-'}</td><td style="padding:8px;border:1px solid #ddd;">${i.description}</td><td style="padding:8px;border:1px solid #ddd;">${i.quantity} ${i.unit}</td></tr>`;
-            }
+            if(i.status === 'approved') hasApprovedItems = true;
         });
-        staffTable += `</table>`; purchasingTable += `</table>`;
+        staffTable += `</table>`;
 
+        // 1. ส่งเมลหา Staff (คนขอ)
         let reqEmail = currentPR.email ? currentPR.email.trim() : '';
         if (reqEmail && reqEmail.includes('@')) {
             await emailjs.send(CONFIG.emailServiceId, CONFIG.emailTemplateId_Master, {
-                to_email: reqEmail, subject: `[Result] ผลอนุมัติ PR ${currentPR.pr_number}`,
-                html_content: `<h3>เรียน คุณ ${currentPR.requester}</h3><p>ผลการพิจารณาใบขอซื้อเลขที่ <b>${currentPR.pr_number}</b>:</p>${staffTable}<br><p><a href="${printLink}">ดูเอกสาร/พิมพ์ PDF</a></p>`
+                to_email: reqEmail, 
+                subject: `[Result] ผลอนุมัติ PR ${currentPR.pr_number}`,
+                html_content: `
+                    <h3>เรียน คุณ ${currentPR.requester}</h3>
+                    <p>ผลการพิจารณาใบขอซื้อเลขที่ <b>${currentPR.pr_number}</b>:</p>
+                    ${staffTable}
+                    <br>
+                    <a href="${linkAll}" style="background-color:#6c757d;color:white;padding:10px 15px;text-decoration:none;border-radius:5px;">
+                        📄 ดูรายละเอียด/พิมพ์ PDF
+                    </a>
+                `
             });
         }
 
+        // 2. ส่งเมลหา จัดซื้อ (มี 2 ปุ่ม)
         if(hasApprovedItems) {
             let buyEmail = CONFIG.purchasingEmail ? CONFIG.purchasingEmail.trim() : '';
             if(buyEmail && buyEmail.includes('@')) {
+                const purchasingHtml = `
+                    <h3>เรียน ฝ่ายจัดซื้อ</h3>
+                    <p>ใบขอซื้อเลขที่ <b>${currentPR.pr_number}</b> ได้รับการอนุมัติแล้ว</p>
+                    <p>ผู้ขอ: ${currentPR.requester} | แผนก: ${currentPR.department}</p>
+                    <hr>
+                    <p>กรุณาเลือกดำเนินการ:</p>
+                    <a href="${linkApproved}" style="background-color:#198754;color:white;padding:12px 20px;text-decoration:none;border-radius:5px;font-weight:bold;font-size:16px;">
+                        🛒 พิมพ์ใบสั่งซื้อ (เฉพาะอนุมัติ)
+                    </a>
+                    <br><br>
+                    <a href="${linkAll}" style="color:#0d6efd;">📄 ดูประวัติรายการทั้งหมด</a>
+                `;
+                
                 await emailjs.send(CONFIG.emailServiceId, CONFIG.emailTemplateId_Master, {
-                    to_email: buyEmail, subject: `[Approved] สั่งซื้อ PR ${currentPR.pr_number}`,
-                    html_content: `<h3>เรียน จัดซื้อ</h3><p>ใบขอซื้อเลขที่ <b>${currentPR.pr_number}</b> อนุมัติแล้ว</p><p>ผู้ขอ: ${currentPR.requester} | แผนก: ${currentPR.department}</p>${purchasingTable}<br><p><a href="${printLink}">ดูเอกสารฉบับเต็ม</a></p>`
+                    to_email: buyEmail, 
+                    subject: `[Approved] สั่งซื้อสินค้า PR ${currentPR.pr_number}`,
+                    html_content: purchasingHtml
                 });
             }
         }
 
-        alert('✅ บันทึกผลและแจ้งเตือนทางเมลเรียบร้อย!');
+        alert('✅ บันทึกผลเรียบร้อย!');
         bootstrap.Modal.getInstance(document.getElementById('detailModal')).hide();
         loadPRs();
 
@@ -365,35 +392,3 @@ window.finalizeApproval = async function() {
         if(btn) { btn.disabled = false; btn.innerText = '💾 บันทึกผลและส่งเมลแจ้งเตือน'; }
     }
 }
-
-// ================= PART 3: VIEW (view_pr.html) =================
-async function loadPRForPrint() {
-    const params = new URLSearchParams(window.location.search);
-    const id = params.get('id');
-    if (!id) return;
-    try {
-        const { data: pr, error } = await db.from('purchase_requests').select('*').eq('id', id).single();
-        if (error) throw error;
-        document.getElementById('v_pr_number').innerText = pr.pr_number;
-        document.getElementById('v_created_at').innerText = new Date(pr.created_at).toLocaleDateString('th-TH');
-        document.getElementById('v_requester').innerText = pr.requester;
-        document.getElementById('v_department').innerText = pr.department;
-        document.getElementById('v_doc_status').innerText = pr.status === 'processed' ? 'ดำเนินการแล้ว' : 'รออนุมัติ';
-        document.getElementById('v_remark').innerText = pr.header_remark || '-';
-        document.getElementById('v_sign_requester').innerText = `${pr.requester}`; // ชื่อบนเส้นเซ็น
-        const tbody = document.getElementById('v_tableBody');
-        tbody.innerHTML = '';
-        if (pr.items) {
-            pr.items.forEach((item, index) => {
-                let statusText = '⏳ รอพิจารณา';
-                if (item.status === 'approved') statusText = '<span class="text-success fw-bold">✅ อนุมัติ</span>';
-                else if (item.status === 'rejected') statusText = `<span class="text-danger text-decoration-line-through">❌ ไม่อนุมัติ</span> <small>(${item.remark})</small>`;
-                tbody.innerHTML += `<tr><td class="text-center">${index + 1}</td><td>${item.code || '-'}</td><td>${item.description}</td><td class="text-center">${item.quantity}</td><td class="text-center">${item.unit}</td><td class="text-center">${statusText}</td></tr>`;
-            });
-        }
-    } catch (err) { alert('Error: ' + err.message); }
-}
-
-if(document.getElementById('v_tableBody')) window.onload = loadPRForPrint;
-if(document.getElementById('prTableBody')) window.onload = loadPRs;
-
