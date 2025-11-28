@@ -17,17 +17,17 @@ const CONFIG = {
     adminPassword: '1234' 
 };
 
-// ================= 2. SYSTEM INITIALIZATION =================
+// ================= 2. SYSTEM START =================
 const db = supabase.createClient(CONFIG.supaUrl, CONFIG.supaKey);
 if(typeof emailjs !== 'undefined') emailjs.init(CONFIG.emailPublicKey);
 
 document.addEventListener("DOMContentLoaded", function() {
-    // โหลด Logo จาก logo.js
+    // 1. โหลด Logo จาก logo.js
     if (typeof LOGO_BASE64 !== 'undefined') {
         document.querySelectorAll('.app-logo').forEach(img => img.src = LOGO_BASE64);
     }
 
-    // ล็อกหน้า Admin
+    // 2. ล็อกหน้า Admin
     if (window.location.href.includes('admin.html')) {
         if (!sessionStorage.getItem('isAdmin')) {
             setTimeout(() => {
@@ -68,20 +68,21 @@ if (prForm) {
         btn.disabled = true; 
 
         try {
-            // Upload File (Rename to Timestamp)
+            // Upload
             let publicUrl = null;
             const fileInput = document.getElementById('attachment');
             if (fileInput.files.length > 0) {
                 btn.innerText = '⏳ กำลังอัปโหลดไฟล์...';
                 const file = fileInput.files[0];
                 const fileExt = file.name.split('.').pop();
-                const fileName = `${Date.now()}.${fileExt}`; // แก้ชื่อไฟล์เป็นตัวเลข
+                const fileName = `${Date.now()}.${fileExt}`;
                 const { error: upErr } = await db.storage.from('pr-files').upload(fileName, file);
                 if (upErr) throw upErr;
                 const { data: urlData } = db.storage.from('pr-files').getPublicUrl(fileName);
                 publicUrl = urlData.publicUrl;
             }
 
+            // Gather Data
             btn.innerText = '⏳ กำลังบันทึก...';
             const items = [];
             document.querySelectorAll('.item-row').forEach(row => {
@@ -110,6 +111,7 @@ if (prForm) {
             const { error } = await db.from('purchase_requests').insert([payload]);
             if (error) throw error;
 
+            // Send Mail
             btn.innerText = '⏳ กำลังส่งอีเมล...';
             const adminLink = window.location.origin + '/admin.html';
             const bossHtml = `
@@ -118,9 +120,10 @@ if (prForm) {
                 <ul>
                     <li><b>เลขที่ PR:</b> ${payload.pr_number}</li>
                     <li><b>ผู้ขอ:</b> ${payload.requester}</li>
+                    <li><b>แผนก:</b> ${payload.department}</li>
                     <li><b>จำนวนรายการ:</b> ${items.length} รายการ</li>
                 </ul>
-                <p>ตรวจสอบและอนุมัติ: <a href="${adminLink}">คลิกที่นี่</a></p>
+                <p>กรุณาตรวจสอบและอนุมัติที่ลิงก์นี้: <a href="${adminLink}">คลิกเพื่ออนุมัติ</a></p>
             `;
 
             await emailjs.send(CONFIG.emailServiceId, CONFIG.emailTemplateId_Master, {
@@ -184,6 +187,7 @@ async function loadPRs() {
 
         data.forEach(pr => {
             const createdDate = new Date(pr.created_at).toLocaleDateString('th-TH');
+            
             let statusBadge = '';
             if (currentMode === 'pending') {
                 const pendingCount = pr.items ? pr.items.filter(i => i.status === 'pending').length : 0;
@@ -227,7 +231,6 @@ function renderItemsTable() {
     const itemsTable = document.getElementById('m_itemsTable');
     const headerRow = document.querySelector('#m_itemsTable').previousElementSibling.querySelector('tr');
     
-    // Checkbox Header
     headerRow.innerHTML = `
         <th class="text-center" width="5%"><input type="checkbox" id="selectAll" class="form-check-input" onclick="toggleSelectAll(this)" checked></th>
         <th width="15%">รหัส</th><th>รายละเอียด</th><th class="text-center" width="10%">จำนวน</th><th class="text-center" width="10%">หน่วย</th><th width="25%">เหตุผล (ถ้าไม่อนุมัติ)</th>`;
@@ -257,7 +260,6 @@ function renderItemsTable() {
             itemsTable.innerHTML += row;
         });
     }
-    // ซ่อน Checkbox ถ้าเป็น History
     if(currentMode === 'history') {
         document.querySelectorAll('input[type="checkbox"], .item-reason').forEach(el => el.disabled = true);
         document.getElementById('selectAll').style.display = 'none';
@@ -335,7 +337,6 @@ window.finalizeApproval = async function() {
         });
         staffTable += `</table>`; purchasingTable += `</table>`;
 
-        // Send Staff
         let reqEmail = currentPR.email ? currentPR.email.trim() : '';
         if (reqEmail && reqEmail.includes('@')) {
             await emailjs.send(CONFIG.emailServiceId, CONFIG.emailTemplateId_Master, {
@@ -344,18 +345,17 @@ window.finalizeApproval = async function() {
             });
         }
 
-        // Send Purchase
         if(hasApprovedItems) {
             let buyEmail = CONFIG.purchasingEmail ? CONFIG.purchasingEmail.trim() : '';
             if(buyEmail && buyEmail.includes('@')) {
                 await emailjs.send(CONFIG.emailServiceId, CONFIG.emailTemplateId_Master, {
                     to_email: buyEmail, subject: `[Approved] สั่งซื้อ PR ${currentPR.pr_number}`,
-                    html_content: `<h3>เรียน จัดซื้อ</h3><p>ใบขอซื้อเลขที่ <b>${currentPR.pr_number}</b> อนุมัติแล้ว</p>${purchasingTable}<br><p><a href="${printLink}">ดูเอกสารฉบับเต็ม</a></p>`
+                    html_content: `<h3>เรียน จัดซื้อ</h3><p>ใบขอซื้อเลขที่ <b>${currentPR.pr_number}</b> อนุมัติแล้ว</p><p>ผู้ขอ: ${currentPR.requester} | แผนก: ${currentPR.department}</p>${purchasingTable}<br><p><a href="${printLink}">ดูเอกสารฉบับเต็ม</a></p>`
                 });
             }
         }
 
-        alert('✅ บันทึกผลเรียบร้อย!');
+        alert('✅ บันทึกผลและแจ้งเตือนทางเมลเรียบร้อย!');
         bootstrap.Modal.getInstance(document.getElementById('detailModal')).hide();
         loadPRs();
 
@@ -380,7 +380,7 @@ async function loadPRForPrint() {
         document.getElementById('v_department').innerText = pr.department;
         document.getElementById('v_doc_status').innerText = pr.status === 'processed' ? 'ดำเนินการแล้ว' : 'รออนุมัติ';
         document.getElementById('v_remark').innerText = pr.header_remark || '-';
-        document.getElementById('v_sign_requester').innerText = `${pr.requester}`; // ชื่อคนขอ (บนเส้น)
+        document.getElementById('v_sign_requester').innerText = `${pr.requester}`; // ชื่อบนเส้นเซ็น
         const tbody = document.getElementById('v_tableBody');
         tbody.innerHTML = '';
         if (pr.items) {
