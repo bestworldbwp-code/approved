@@ -106,7 +106,7 @@
             </div>
             <div class="col-6">
                 <div class="fw-bold mb-2">ผู้อนุมัติ</div>
-                <div class="mb-1 fw-bold" style="color: #000;">( อนุมัติออนไลน์ )</div>
+                <div class="mb-1 fw-bold" style="color: #000;"> คุณเบญจมาศ ถิ่นจันทร์ </div>
                 <div class="sign-line"></div>
                 <div class="small mt-1" style="color: #000;">วันที่ ............/............/............</div>
             </div>
@@ -134,7 +134,7 @@ async function loadPRForPrint() {
         document.getElementById('v_created_at').innerText = new Date(pr.created_at).toLocaleDateString('th-TH');
         document.getElementById('v_requester').innerText = pr.requester;
         document.getElementById('v_department').innerText = pr.department;
-        document.getElementById('v_doc_status').innerText = pr.status === 'processed' ? 'ดำเนินการแล้ว' : 'รออนุมัติ';
+        document.getElementById('v_doc_status').innerText = pr.status === 'processed' ? 'พิจารณาแล้ว' : 'รออนุมัติ';
         document.getElementById('v_remark').innerText = pr.header_remark || '-';
         document.getElementById('v_sign_requester').innerText = `${pr.requester}`;
 
@@ -179,3 +179,4 @@ window.onload = loadPRForPrint;
 </script>
 </body>
 </html>
+
