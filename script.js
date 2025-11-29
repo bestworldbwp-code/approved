@@ -10,8 +10,8 @@ const CONFIG = {
     emailTemplateId_Master: 'template_master', 
 
     // อีเมลผู้รับ
-    bossEmail: 'bestworld.bwp328@gmail.com',          
-    purchasingEmail: 'jakkidmarat@gmail.com',
+    bossEmail: 'asst.purbwp@gmail.com',          
+    purchasingEmail: 'acc_bwi@hotmail.com',
 
     // รหัสผ่านเข้าหน้า Admin
     adminPassword: '1234' 
@@ -476,3 +476,4 @@ document.addEventListener('keydown', function(event) {
         }
     }
 });
+
