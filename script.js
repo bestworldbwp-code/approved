@@ -117,7 +117,7 @@ if (prForm) {
             btn.innerText = '⏳ ส่งอีเมล...';
             const adminLink = window.location.origin + '/admin.html';
             const bossHtml = `
-                <h3>เรียน หัวหน้างาน,</h3>
+                <h3>เรียน ผู้ช่วยกรรมการผู้จัดการ,</h3>
                 <p>มีรายการขอซื้อใหม่ (PR: ${payload.pr_number}) รออนุมัติครับ</p>
                 <p>ผู้ขอ: ${payload.requester}</p>
                 <p>ตรวจสอบ: <a href="${adminLink}">คลิกที่นี่</a></p>
@@ -415,3 +415,4 @@ async function loadPRForPrint() {
 
 if(document.getElementById('v_tableBody')) window.onload = loadPRForPrint;
 if(document.getElementById('prTableBody')) window.onload = loadPRs;
+
