@@ -1,12 +1,19 @@
-// ================= 1. CONFIG =================
+// ================= 1. CONFIG (ตั้งค่าระบบ) =================
 const CONFIG = {
+    // Supabase
     supaUrl: 'https://pufddwdcpugilwlavban.supabase.co', 
     supaKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB1ZmRkd2RjcHVnaWx3bGF2YmFuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkzODY1MDUsImV4cCI6MjA3NDk2MjUwNX0.6dyYteDu6QSkTL9hIiaHw_2WeltSGSIoMSvx3OcEjN0', 
+    
+    // EmailJS
     emailPublicKey: 'rEly1Il6Xz0qZwaSc',   
     emailServiceId: 'service_tolm3pu',   
     emailTemplateId_Master: 'template_master', 
+
+    // อีเมลผู้รับ
     bossEmail: 'bestworld.bwp328@gmail.com',          
     purchasingEmail: 'jakkidmarat@gmail.com',
+
+    // รหัสผ่านเข้าหน้า Admin
     adminPassword: '1234' 
 };
 
