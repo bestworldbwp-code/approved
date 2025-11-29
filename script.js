@@ -415,4 +415,17 @@ async function loadPRForPrint() {
 
 if(document.getElementById('v_tableBody')) window.onload = loadPRForPrint;
 if(document.getElementById('prTableBody')) window.onload = loadPRs;
+// ==========================================
+// [FIX] ป้องกันการกด Enter แล้วฟอร์มส่งเอง
+// ==========================================
+document.addEventListener('keydown', function(event) {
+    // ถ้าปุ่มที่กดคือ Enter (key code 13)
+    if (event.key === 'Enter') {
+        // และตัวที่พิมพ์อยู่เป็นช่อง Input ธรรมดา (ไม่ใช่ช่องเขียนยาวๆ textarea)
+        if (event.target.tagName === 'INPUT') {
+            event.preventDefault(); // สั่งหยุด ไม่ให้ทำอะไร
+            return false;
+        }
+    }
+});
 
