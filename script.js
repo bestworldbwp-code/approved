@@ -1,45 +1,50 @@
 // ================= 1. CONFIG =================
 const CONFIG = {
-    // Supabase
     supaUrl: 'https://pufddwdcpugilwlavban.supabase.co', 
     supaKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB1ZmRkd2RjcHVnaWx3bGF2YmFuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkzODY1MDUsImV4cCI6MjA3NDk2MjUwNX0.6dyYteDu6QSkTL9hIiaHw_2WeltSGSIoMSvx3OcEjN0', 
-    
-    // EmailJS
     emailPublicKey: 'rEly1Il6Xz0qZwaSc',   
     emailServiceId: 'service_tolm3pu',   
-    emailTemplateId_Master: 'template_master', // ใช้ Template เดียว
-
-    // อีเมลผู้รับ
+    emailTemplateId_Master: 'template_master', 
     bossEmail: 'bestworld.bwp328@gmail.com',          
     purchasingEmail: 'jakkidmarat@gmail.com',
-
-    // รหัสผ่านเข้าหน้า Admin
     adminPassword: '1234' 
 };
 
-// ================= 2. SYSTEM INITIALIZATION =================
+// ================= 2. SYSTEM START =================
 const db = supabase.createClient(CONFIG.supaUrl, CONFIG.supaKey);
 if(typeof emailjs !== 'undefined') emailjs.init(CONFIG.emailPublicKey);
 
 document.addEventListener("DOMContentLoaded", function() {
-    // โหลด Logo (ถ้ามีไฟล์ logo.js หรือตัวแปรนี้อยู่)
+    // โหลด Logo
     if (typeof LOGO_BASE64 !== 'undefined') {
         document.querySelectorAll('.app-logo').forEach(img => img.src = LOGO_BASE64);
     }
 
-    // ล็อกหน้า Admin
+    // [FIX] ระบบ Login แบบ Overlay (เสถียรกว่า prompt บนมือถือ)
     if (window.location.href.includes('admin.html')) {
-        if (!sessionStorage.getItem('isAdmin')) {
-            setTimeout(() => {
-                const input = prompt("🔒 กรุณาใส่รหัสผ่าน Admin:");
-                if (input === CONFIG.adminPassword) sessionStorage.setItem('isAdmin', 'true');
-                else { alert("รหัสผ่านไม่ถูกต้อง!"); window.location.href = "index.html"; }
-            }, 500);
+        const overlay = document.getElementById('loginOverlay');
+        if (sessionStorage.getItem('isAdmin') === 'true') {
+            overlay.style.display = 'none'; // ถ้าเคยล็อกอินแล้ว ซ่อน Overlay
+            loadPRs(); // โหลดข้อมูลเลย
+        } else {
+            overlay.style.display = 'flex'; // โชว์หน้า Login
         }
     }
 });
 
-// ================= PART 1: FORM (index.html) =================
+// [FIX] ฟังก์ชันเช็ครหัสผ่าน (ผูกกับปุ่มใน HTML)
+window.checkAdminPassword = function() {
+    const input = document.getElementById('adminPassInput').value;
+    if (input === CONFIG.adminPassword) {
+        sessionStorage.setItem('isAdmin', 'true');
+        document.getElementById('loginOverlay').style.display = 'none';
+        loadPRs();
+    } else {
+        alert("❌ รหัสผ่านไม่ถูกต้อง!");
+    }
+}
+
+// ================= PART 1: FORM =================
 window.addItemRow = function() {
     const container = document.getElementById('itemsContainer');
     if (!container) return; 
@@ -71,7 +76,7 @@ if (prForm) {
             let publicUrl = null;
             const fileInput = document.getElementById('attachment');
             if (fileInput.files.length > 0) {
-                btn.innerText = '⏳ กำลังอัปโหลดไฟล์...';
+                btn.innerText = '⏳ อัปโหลดไฟล์...';
                 const file = fileInput.files[0];
                 const fileExt = file.name.split('.').pop();
                 const fileName = `${Date.now()}.${fileExt}`;
@@ -81,7 +86,7 @@ if (prForm) {
                 publicUrl = urlData.publicUrl;
             }
 
-            btn.innerText = '⏳ กำลังบันทึก...';
+            btn.innerText = '⏳ บันทึกข้อมูล...';
             const items = [];
             document.querySelectorAll('.item-row').forEach(row => {
                 items.push({
@@ -109,22 +114,18 @@ if (prForm) {
             const { error } = await db.from('purchase_requests').insert([payload]);
             if (error) throw error;
 
-            btn.innerText = '⏳ กำลังส่งอีเมล...';
+            btn.innerText = '⏳ ส่งอีเมล...';
             const adminLink = window.location.origin + '/admin.html';
             const bossHtml = `
                 <h3>เรียน หัวหน้างาน,</h3>
-                <p>มีรายการขอซื้อใหม่เข้ามา รอการอนุมัติครับ</p>
-                <ul>
-                    <li><b>เลขที่ PR:</b> ${payload.pr_number}</li>
-                    <li><b>ผู้ขอ:</b> ${payload.requester}</li>
-                    <li><b>จำนวนรายการ:</b> ${items.length} รายการ</li>
-                </ul>
-                <p>ตรวจสอบและอนุมัติ: <a href="${adminLink}">คลิกที่นี่</a></p>
+                <p>มีรายการขอซื้อใหม่ (PR: ${payload.pr_number}) รออนุมัติครับ</p>
+                <p>ผู้ขอ: ${payload.requester}</p>
+                <p>ตรวจสอบ: <a href="${adminLink}">คลิกที่นี่</a></p>
             `;
 
             await emailjs.send(CONFIG.emailServiceId, CONFIG.emailTemplateId_Master, {
                 to_email: CONFIG.bossEmail,
-                subject: `[New Request] มีรายการขอซื้อใหม่ ${payload.pr_number}`,
+                subject: `[New Request] ขอซื้อใหม่ ${payload.pr_number}`,
                 html_content: bossHtml
             });
 
@@ -140,17 +141,17 @@ if (prForm) {
     });
 }
 
-// ================= PART 2: ADMIN (admin.html) =================
+// ================= PART 2: ADMIN =================
 let allPRs = []; let currentPR = {}; let currentMode = 'pending'; 
 
 window.switchTab = function(mode) {
     currentMode = mode;
     if (mode === 'pending') {
-        document.getElementById('btnPending').className = 'btn btn-primary active';
-        document.getElementById('btnHistory').className = 'btn btn-outline-secondary';
+        document.getElementById('btnPending').className = 'btn btn-primary active btn-sm';
+        document.getElementById('btnHistory').className = 'btn btn-outline-secondary btn-sm';
     } else {
-        document.getElementById('btnHistory').className = 'btn btn-secondary active';
-        document.getElementById('btnPending').className = 'btn btn-outline-primary';
+        document.getElementById('btnHistory').className = 'btn btn-secondary active btn-sm';
+        document.getElementById('btnPending').className = 'btn btn-outline-primary btn-sm';
     }
     loadPRs();
 }
@@ -158,7 +159,7 @@ window.switchTab = function(mode) {
 async function loadPRs() {
     const tableBody = document.getElementById('prTableBody');
     if (!tableBody) return;
-    tableBody.innerHTML = '<tr><td colspan="6" class="text-center p-4">⏳ กำลังโหลดข้อมูล...</td></tr>';
+    tableBody.innerHTML = '<tr><td colspan="4" class="text-center p-4">⏳ กำลังโหลด...</td></tr>';
 
     try {
         let query = db.from('purchase_requests').select('*').order('created_at', { ascending: false });
@@ -172,8 +173,7 @@ async function loadPRs() {
         tableBody.innerHTML = '';
         
         if (data.length === 0) {
-            const msg = currentMode === 'pending' ? '🎉 ไม่มีรายการรออนุมัติ' : '📭 ยังไม่มีประวัติรายการ';
-            tableBody.innerHTML = `<tr><td colspan="6" class="text-center p-5 text-muted">${msg}</td></tr>`;
+            tableBody.innerHTML = `<tr><td colspan="4" class="text-center p-5 text-muted">ไม่พบข้อมูล</td></tr>`;
             return;
         }
 
@@ -183,24 +183,31 @@ async function loadPRs() {
             let statusBadge = '';
             if (currentMode === 'pending') {
                 const pendingCount = pr.items ? pr.items.filter(i => i.status === 'pending').length : 0;
-                statusBadge = pendingCount > 0 ? `<span class="badge bg-warning text-dark">รอตรวจ ${pendingCount} รายการ</span>` : `<span class="badge bg-success">ตรวจครบแล้ว</span>`;
+                statusBadge = pendingCount > 0 ? `<span class="badge bg-warning text-dark">รอ ${pendingCount}</span>` : `<span class="badge bg-success">ครบ</span>`;
             } else {
-                statusBadge = `<span class="badge bg-secondary">${pr.status === 'processed' ? 'ดำเนินการแล้ว' : pr.status}</span>`;
+                statusBadge = `<span class="badge bg-secondary">${pr.status}</span>`;
             }
             
-            let attachBtn = pr.attachment_url ? `<a href="${pr.attachment_url}" target="_blank" class="btn btn-sm btn-outline-secondary">📎 ไฟล์</a>` : '-';
+            // [FIX] ใส่ '' ครอบ ID เพื่อให้กดในมือถือติดชัวร์ๆ
             let actionBtn = currentMode === 'pending' 
-                ? `<button onclick="openDetailModal(${pr.id})" class="btn btn-primary btn-sm rounded-pill px-3">🔍 ตรวจสอบ</button>`
-                : `<button onclick="openDetailModal(${pr.id})" class="btn btn-outline-info btn-sm rounded-pill px-3">📄 ดูรายละเอียด</button>`;
+                ? `<button onclick="openDetailModal('${pr.id}')" class="btn btn-primary btn-sm rounded-pill px-3">🔍 ตรวจ</button>`
+                : `<button onclick="openDetailModal('${pr.id}')" class="btn btn-outline-info btn-sm rounded-pill px-3">📄 ดู</button>`;
 
-            const row = `<tr><td><span class="fw-bold text-primary">${pr.pr_number}</span></td><td>${createdDate}</td><td><div class="fw-bold">${pr.requester}</div><div class="small text-muted">${pr.department}</div></td><td>${statusBadge}</td><td class="text-center">${attachBtn}</td><td class="text-center">${actionBtn}</td></tr>`;
+            const row = `
+                <tr>
+                    <td><span class="fw-bold text-primary">${pr.pr_number}</span></td>
+                    <td><div class="fw-bold small">${pr.requester}</div></td>
+                    <td>${statusBadge}</td>
+                    <td class="text-center">${actionBtn}</td>
+                </tr>`;
             tableBody.innerHTML += row;
         });
-    } catch (err) { tableBody.innerHTML = `<tr><td colspan="6" class="text-danger text-center">Error: ${err.message}</td></tr>`; }
+    } catch (err) { tableBody.innerHTML = `<tr><td colspan="4" class="text-danger text-center">Error: ${err.message}</td></tr>`; }
 }
 
 window.openDetailModal = function(id) {
-    currentPR = allPRs.find(p => p.id === id);
+    // แปลง id เป็น string เพื่อความชัวร์ในการเปรียบเทียบ
+    currentPR = allPRs.find(p => String(p.id) === String(id));
     if (!currentPR) return;
 
     document.getElementById('m_pr_number').innerText = currentPR.pr_number;
@@ -208,13 +215,13 @@ window.openDetailModal = function(id) {
     document.getElementById('m_requester').innerText = currentPR.requester;
     document.getElementById('m_department').innerText = currentPR.department;
     document.getElementById('m_remark').innerText = currentPR.header_remark || '-';
-    document.getElementById('m_attachment').innerHTML = currentPR.attachment_url ? `<a href="${currentPR.attachment_url}" target="_blank" class="btn btn-sm btn-outline-primary">📎 ดูไฟล์แนบ</a>` : '-';
+    document.getElementById('m_attachment').innerHTML = currentPR.attachment_url ? `<a href="${currentPR.attachment_url}" target="_blank" class="btn btn-sm btn-outline-primary">📎 ดูไฟล์</a>` : '-';
     
     renderItemsTable();
 
     const saveBtn = document.querySelector('.modal-footer .btn-success');
     if (currentMode === 'history') saveBtn.style.display = 'none';
-    else { saveBtn.style.display = 'block'; saveBtn.disabled = false; saveBtn.innerText = '💾 บันทึกผลและส่งเมลแจ้งเตือน'; }
+    else { saveBtn.style.display = 'block'; saveBtn.disabled = false; saveBtn.innerText = '💾 บันทึกผล'; }
 
     new bootstrap.Modal(document.getElementById('detailModal')).show();
 }
@@ -227,10 +234,10 @@ function renderItemsTable() {
     if (headerRow) {
         headerRow.innerHTML = `
             <th class="text-center" width="5%"><input type="checkbox" id="selectAll" class="form-check-input" onclick="toggleSelectAll(this)" checked></th>
-            <th width="15%">รหัส</th><th>รายละเอียด</th><th class="text-center" width="10%">จำนวน</th><th class="text-center" width="10%">หน่วย</th><th width="25%">เหตุผล (ถ้าไม่อนุมัติ)</th>`;
+            <th width="15%">รหัส</th><th>รายละเอียด</th><th class="text-center" width="10%">จำนวน</th><th width="25%">เหตุผล (ถ้าไม่)</th>`;
     }
 
-    itemsTable.innerHTML = '';
+    let htmlRows = '';
     if (currentPR.items) {
         currentPR.items.forEach((item, index) => {
             const isChecked = (item.status === 'approved' || item.status === 'pending');
@@ -239,23 +246,22 @@ function renderItemsTable() {
             const reasonVal = item.remark || '';
             const rowClass = isChecked ? '' : 'table-danger';
 
-            const row = `
+            htmlRows += `
                 <tr id="tr-item-${index}" class="${rowClass}">
                     <td class="text-center">
                         <input type="checkbox" class="form-check-input item-checkbox" data-index="${index}" onchange="toggleItem(this, ${index})" ${isChecked ? 'checked' : ''}>
                     </td>
                     <td>${item.code || '-'}</td>
                     <td>${item.description}</td>
-                    <td class="text-center">${item.quantity}</td>
-                    <td class="text-center">${item.unit}</td>
+                    <td class="text-center">${item.quantity} ${item.unit || ''}</td>
                     <td>
-                        <input type="text" class="form-control form-control-sm item-reason" id="reason-${index}" placeholder="ระบุเหตุผล..." value="${reasonVal}" style="${reasonStyle}">
+                        <input type="text" class="form-control form-control-sm item-reason" id="reason-${index}" placeholder="เหตุผล..." value="${reasonVal}" style="${reasonStyle}">
                         <span id="status-text-${index}" class="text-success small fw-bold" style="${statusStyle}">✅ อนุมัติ</span>
                     </td>
                 </tr>`;
-            itemsTable.innerHTML += row;
         });
     }
+    itemsTable.innerHTML = htmlRows;
     
     if(currentMode === 'history') {
         document.querySelectorAll('input[type="checkbox"], .item-reason').forEach(el => el.disabled = true);
@@ -288,9 +294,6 @@ window.toggleItem = function(checkbox, index) {
     }
 }
 
-// ----------------------------------------------------
-// ฟังก์ชันบันทึกและส่งเมล (แก้ไขล่าสุด)
-// ----------------------------------------------------
 window.finalizeApproval = async function() {
     const checkboxes = document.querySelectorAll('.item-checkbox');
     let hasRejectedWithoutReason = false;
@@ -317,67 +320,41 @@ window.finalizeApproval = async function() {
     if (!confirm("ยืนยันผลการพิจารณา?")) return;
 
     const btn = document.querySelector('.modal-footer .btn-success');
-    if(btn) { btn.disabled = true; btn.innerText = '⏳ กำลังประมวลผล...'; }
+    if(btn) { btn.disabled = true; btn.innerText = '⏳ กำลังส่งเมล...'; }
 
     try {
         await db.from('purchase_requests').update({ status: 'processed', items: currentPR.items }).eq('id', currentPR.id);
-        
-        // สร้าง 2 ลิงก์
-        const baseUrl = window.location.origin + `/view_pr.html?id=${currentPR.id}`;
-        const linkAll = baseUrl; 
-        const linkApproved = baseUrl + "&filter=approved";
+        const printLink = window.location.origin + `/view_pr.html?id=${currentPR.id}`;
 
-        // ตาราง HTML
         let staffTable = `<table style="width:100%;border-collapse:collapse;border:1px solid #ddd;"><tr style="background:#f8f9fa;"><th style="padding:8px;border:1px solid #ddd;">รายการ</th><th style="padding:8px;border:1px solid #ddd;">จำนวน</th><th style="padding:8px;border:1px solid #ddd;">ผล</th></tr>`;
+        let purchasingTable = `<table style="width:100%;border-collapse:collapse;border:1px solid #ddd;"><tr style="background:#d4edda;"><th style="padding:8px;border:1px solid #ddd;">รหัส</th><th style="padding:8px;border:1px solid #ddd;">รายการ</th><th style="padding:8px;border:1px solid #ddd;">จำนวน</th></tr>`;
         let hasApprovedItems = false;
 
         currentPR.items.forEach(i => {
             const color = i.status === 'approved' ? 'green' : 'red';
             const statusText = i.status === 'approved' ? '✅ อนุมัติ' : `❌ ไม่ผ่าน (${i.remark})`;
             staffTable += `<tr><td style="padding:8px;border:1px solid #ddd;">${i.description}</td><td style="padding:8px;border:1px solid #ddd;">${i.quantity} ${i.unit}</td><td style="padding:8px;border:1px solid #ddd;color:${color};font-weight:bold;">${statusText}</td></tr>`;
-            if(i.status === 'approved') hasApprovedItems = true;
+            if(i.status === 'approved') {
+                hasApprovedItems = true;
+                purchasingTable += `<tr><td style="padding:8px;border:1px solid #ddd;">${i.code||'-'}</td><td style="padding:8px;border:1px solid #ddd;">${i.description}</td><td style="padding:8px;border:1px solid #ddd;">${i.quantity} ${i.unit}</td></tr>`;
+            }
         });
-        staffTable += `</table>`;
+        staffTable += `</table>`; purchasingTable += `</table>`;
 
-        // 1. ส่งเมลหา Staff (คนขอ)
         let reqEmail = currentPR.email ? currentPR.email.trim() : '';
         if (reqEmail && reqEmail.includes('@')) {
             await emailjs.send(CONFIG.emailServiceId, CONFIG.emailTemplateId_Master, {
-                to_email: reqEmail, 
-                subject: `[Result] ผลอนุมัติ PR ${currentPR.pr_number}`,
-                html_content: `
-                    <h3>เรียน คุณ ${currentPR.requester}</h3>
-                    <p>ผลการพิจารณาใบขอซื้อเลขที่ <b>${currentPR.pr_number}</b>:</p>
-                    ${staffTable}
-                    <br>
-                    <a href="${linkAll}" style="background-color:#6c757d;color:white;padding:10px 15px;text-decoration:none;border-radius:5px;">
-                        📄 ดูรายละเอียด/พิมพ์ PDF
-                    </a>
-                `
+                to_email: reqEmail, subject: `[Result] ผลอนุมัติ PR ${currentPR.pr_number}`,
+                html_content: `<h3>เรียน คุณ ${currentPR.requester}</h3><p>ผลการพิจารณาใบขอซื้อเลขที่ <b>${currentPR.pr_number}</b>:</p>${staffTable}<br><p><a href="${printLink}">ดูเอกสาร/พิมพ์ PDF</a></p>`
             });
         }
 
-        // 2. ส่งเมลหา จัดซื้อ (มี 2 ปุ่ม)
         if(hasApprovedItems) {
             let buyEmail = CONFIG.purchasingEmail ? CONFIG.purchasingEmail.trim() : '';
             if(buyEmail && buyEmail.includes('@')) {
-                const purchasingHtml = `
-                    <h3>เรียน ฝ่ายจัดซื้อ</h3>
-                    <p>ใบขอซื้อเลขที่ <b>${currentPR.pr_number}</b> ได้รับการอนุมัติแล้ว</p>
-                    <p>ผู้ขอ: ${currentPR.requester} | แผนก: ${currentPR.department}</p>
-                    <hr>
-                    <p>กรุณาเลือกดำเนินการ:</p>
-                    <a href="${linkApproved}" style="background-color:#198754;color:white;padding:12px 20px;text-decoration:none;border-radius:5px;font-weight:bold;font-size:16px;">
-                        🛒 พิมพ์ใบสั่งซื้อ (เฉพาะอนุมัติ)
-                    </a>
-                    <br><br>
-                    <a href="${linkAll}" style="color:#0d6efd;">📄 ดูประวัติรายการทั้งหมด</a>
-                `;
-                
                 await emailjs.send(CONFIG.emailServiceId, CONFIG.emailTemplateId_Master, {
-                    to_email: buyEmail, 
-                    subject: `[Approved] สั่งซื้อสินค้า PR ${currentPR.pr_number}`,
-                    html_content: purchasingHtml
+                    to_email: buyEmail, subject: `[Approved] สั่งซื้อ PR ${currentPR.pr_number}`,
+                    html_content: `<h3>เรียน จัดซื้อ</h3><p>ใบขอซื้อเลขที่ <b>${currentPR.pr_number}</b> อนุมัติแล้ว</p><p>ผู้ขอ: ${currentPR.requester} | แผนก: ${currentPR.department}</p>${purchasingTable}<br><p><a href="${printLink}" style="padding:10px;background:green;color:white;">พิมพ์ใบสั่งซื้อ (เฉพาะอนุมัติ)</a><br><a href="${printLink}">ดูรายการทั้งหมด</a></p>`
                 });
             }
         }
@@ -389,6 +366,52 @@ window.finalizeApproval = async function() {
     } catch (err) {
         console.error(err);
         alert('Error: ' + err.message);
-        if(btn) { btn.disabled = false; btn.innerText = '💾 บันทึกผลและส่งเมลแจ้งเตือน'; }
+        if(btn) { btn.disabled = false; btn.innerText = '💾 บันทึกผลและส่งเมล'; }
     }
 }
+
+// ================= PART 3: VIEW =================
+async function loadPRForPrint() {
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get('id');
+    const filter = params.get('filter'); // [NEW] รับค่า Filter
+
+    if (!id) return;
+
+    if (filter === 'approved') {
+        document.getElementById('doc_title').innerText = "ใบสั่งซื้อสินค้า (เฉพาะรายการที่อนุมัติ)";
+    }
+
+    try {
+        const { data: pr, error } = await db.from('purchase_requests').select('*').eq('id', id).single();
+        if (error) throw error;
+        document.getElementById('v_pr_number').innerText = pr.pr_number;
+        document.getElementById('v_created_at').innerText = new Date(pr.created_at).toLocaleDateString('th-TH');
+        document.getElementById('v_requester').innerText = pr.requester;
+        document.getElementById('v_department').innerText = pr.department;
+        document.getElementById('v_doc_status').innerText = pr.status === 'processed' ? 'ดำเนินการแล้ว' : 'รออนุมัติ';
+        document.getElementById('v_remark').innerText = pr.header_remark || '-';
+        document.getElementById('v_sign_requester').innerText = `${pr.requester}`;
+        
+        const tbody = document.getElementById('v_tableBody');
+        tbody.innerHTML = '';
+        
+        // [Logic ใหม่] กรองข้อมูลถ้ามี filter
+        let displayItems = pr.items;
+        if (filter === 'approved') {
+            displayItems = pr.items.filter(item => item.status === 'approved');
+        }
+
+        if (displayItems) {
+            displayItems.forEach((item, index) => {
+                let statusText = '⏳ รอพิจารณา';
+                if (item.status === 'approved') statusText = '<span class="fw-bold" style="color:green;">✅ อนุมัติ</span>';
+                else if (item.status === 'rejected') statusText = `<span class="text-decoration-line-through" style="color:red;">❌ ไม่อนุมัติ</span>`;
+                tbody.innerHTML += `<tr><td class="text-center">${index + 1}</td><td>${item.code || '-'}</td><td>${item.description}</td><td class="text-center">${item.quantity}</td><td class="text-center">${item.unit}</td><td class="text-center">${statusText}</td></tr>`;
+            });
+        }
+    } catch (err) { alert('Error: ' + err.message); }
+}
+
+if(document.getElementById('v_tableBody')) window.onload = loadPRForPrint;
+if(document.getElementById('prTableBody')) window.onload = loadPRs;
