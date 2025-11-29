@@ -22,22 +22,35 @@ const db = supabase.createClient(CONFIG.supaUrl, CONFIG.supaKey);
 if(typeof emailjs !== 'undefined') emailjs.init(CONFIG.emailPublicKey);
 
 document.addEventListener("DOMContentLoaded", function() {
-    // 1. โหลด Logo จาก logo.js
+    // 1. โหลด Logo
     if (typeof LOGO_BASE64 !== 'undefined') {
         document.querySelectorAll('.app-logo').forEach(img => img.src = LOGO_BASE64);
     }
 
-    // 2. ล็อกหน้า Admin
+    // 2. เช็ค Login หน้า Admin (ตอนโหลดหน้า)
     if (window.location.href.includes('admin.html')) {
-        if (!sessionStorage.getItem('isAdmin')) {
-            setTimeout(() => {
-                const input = prompt("🔒 กรุณาใส่รหัสผ่าน Admin:");
-                if (input === CONFIG.adminPassword) sessionStorage.setItem('isAdmin', 'true');
-                else { alert("รหัสผ่านไม่ถูกต้อง!"); window.location.href = "index.html"; }
-            }, 500);
+        const overlay = document.getElementById('loginOverlay');
+        if (overlay) {
+            if (sessionStorage.getItem('isAdmin') === 'true') {
+                overlay.style.display = 'none'; // ซ่อนถ้าล็อกอินแล้ว
+            } else {
+                overlay.style.display = 'flex'; // โชว์ถ้ายังไม่ล็อกอิน
+            }
         }
     }
 });
+
+// [FIXED] เพิ่มฟังก์ชันนี้กลับมาครับ (สำหรับปุ่มกด Login)
+window.checkAdminPassword = function() {
+    const input = document.getElementById('adminPassInput').value;
+    if (input === CONFIG.adminPassword) {
+        sessionStorage.setItem('isAdmin', 'true');
+        document.getElementById('loginOverlay').style.display = 'none';
+        loadPRs(); // โหลดข้อมูลทันที
+    } else {
+        alert("❌ รหัสผ่านไม่ถูกต้อง!");
+    }
+}
 
 // ================= PART 1: FORM (index.html) =================
 window.addItemRow = function() {
@@ -68,7 +81,7 @@ if (prForm) {
         btn.disabled = true; 
 
         try {
-            // Upload File (Rename to Timestamp to avoid Thai characters issue)
+            // Upload
             let publicUrl = null;
             const fileInput = document.getElementById('attachment');
             if (fileInput.files.length > 0) {
@@ -260,6 +273,7 @@ function renderItemsTable() {
                     <td>${item.code || '-'}</td>
                     <td>${item.description}</td>
                     <td class="text-center">${item.quantity} ${item.unit || ''}</td>
+                    <td class="text-center">${item.unit}</td>
                     <td>
                         <input type="text" class="form-control form-control-sm item-reason" id="reason-${index}" placeholder="ระบุเหตุผล..." value="${reasonVal}" style="${reasonStyle}">
                         <span id="status-text-${index}" class="text-success small fw-bold" style="${statusStyle}">✅ อนุมัติ</span>
@@ -338,7 +352,7 @@ window.finalizeApproval = async function() {
 
         // ตาราง HTML
         let staffTable = `<table style="width:100%;border-collapse:collapse;border:1px solid #ddd;"><tr style="background:#f8f9fa;"><th style="padding:8px;border:1px solid #ddd;">รายการ</th><th style="padding:8px;border:1px solid #ddd;">จำนวน</th><th style="padding:8px;border:1px solid #ddd;">ผล</th></tr>`;
-        let purchasingTable = `<table style="width:100%;border-collapse:collapse;border:1px solid #ddd;"><tr style="background:#d4edda;"><th style="padding:8px;border:1px solid #ddd;">รหัส</th><th style="padding:8px;border:1px solid #ddd;">รายการ</th><th style="padding:8px;border:1px solid #ddd;">จำนวน</th></tr>`;
+        let purchasingTable = `<table style="width:100%;border-collapse:collapse;border:1px solid #ddd;"><tr style="background:#d4edda;"><th style="padding:8px;border:1px solid #ddd;">รหัส</th><th style="padding:8px;border:1px solid #ddd;">รายการ (อนุมัติแล้ว)</th><th style="padding:8px;border:1px solid #ddd;">จำนวน</th></tr>`;
         let hasApprovedItems = false;
 
         currentPR.items.forEach(i => {
@@ -373,7 +387,7 @@ window.finalizeApproval = async function() {
         // 2. ส่งเมลหา จัดซื้อ
         if(hasApprovedItems) {
             let buyEmail = CONFIG.purchasingEmail ? CONFIG.purchasingEmail.trim() : '';
-            if(buyEmail && buyEmail.includes('@')) {
+            if (buyEmail && buyEmail.includes('@')) {
                 const purchasingHtml = `
                     <h3>เรียน ฝ่ายจัดซื้อ</h3>
                     <p>ใบขอซื้อเลขที่ <b>${currentPR.pr_number}</b> ได้รับการอนุมัติแล้ว</p>
@@ -400,7 +414,7 @@ window.finalizeApproval = async function() {
             }
         }
 
-        alert('✅ บันทึกผลและส่งเมลเรียบร้อย!');
+        alert('✅ บันทึกผลเรียบร้อย!');
         bootstrap.Modal.getInstance(document.getElementById('detailModal')).hide();
         loadPRs();
 
