@@ -8,21 +8,37 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         /* ตั้งค่าพื้นฐาน */
-        body { background: #525659; font-family: 'Sarabun', sans-serif; color: #000 !important; }
+        body {
+            background: #525659;
+            font-family: 'Sarabun', sans-serif;
+            color: #000000 !important;
+        }
 
         /* กรอบดำเข้ม */
         .border, .table-bordered, .table-bordered th, .table-bordered td, .border-bottom, .border-dark {
-            border-color: #000000 !important; border-width: 1px !important;
+            border-color: #000000 !important;
+            border-width: 1px !important;
         }
-        .sign-line { border-bottom: 1px dotted #000000 !important; width: 180px; margin: 5px auto; height: 5px; }
+        .sign-line {
+            border-bottom: 1px dotted #000000 !important;
+            width: 180px;
+            margin: 5px auto;
+            height: 5px;
+        }
 
         /* หน้ากระดาษ */
         .page {
-            background: white; width: 210mm; min-height: 297mm; padding: 15mm 20mm; margin: 10mm auto;
-            position: relative; display: flex; flex-direction: column; box-shadow: 0 0 20px rgba(0,0,0,0.3);
+            background: white;
+            width: 210mm;
+            min-height: 297mm;
+            padding: 15mm 20mm;
+            margin: 10mm auto;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 0 20px rgba(0,0,0,0.3);
         }
         
-        /* เลขที่เอกสารมุมขวาล่าง */
         .doc-footer { position: absolute; bottom: 10mm; right: 20mm; font-size: 12px; text-align: right; color: #000; }
 
         /* Print Settings */
@@ -59,9 +75,8 @@
 
     <div class="row border p-3 mb-3 rounded mx-0 fw-bold" style="color: #000;">
         <div class="col-6 mb-2">เลขที่เอกสาร: <span id="v_pr_number" class="fw-normal">-</span></div>
-        <div class="col-6 mb-2">วันที่: <span id="v_created_at" class="fw-normal">-</span></div>
-        <div class="col-6 mb-2">ผู้ขอซื้อ: <span id="v_requester" class="fw-normal">-</span></div>
-        <div class="col-6 mb-2">แผนก: <span id="v_department" class="fw-normal">-</span></div>
+        <div class="col-6 mb-2">วันที่ขอ: <span id="v_created_at" class="fw-normal">-</span></div> <div class="col-6 mb-2">ผู้ขอซื้อ: <span id="v_requester" class="fw-normal">-</span></div>
+        <div class="col-6 mb-2">วันที่ต้องการของ: <span id="v_required_date" class="fw-normal text-danger">-</span></div> <div class="col-6 mb-2">แผนก: <span id="v_department" class="fw-normal">-</span></div>
         <div class="col-6">สถานะเอกสาร: <span id="v_doc_status" class="fw-normal">-</span></div>
     </div>
 
@@ -91,7 +106,7 @@
             </div>
             <div class="col-6">
                 <div class="fw-bold mb-2">ผู้อนุมัติ</div>
-                <div class="mb-1 fw-bold" style="color: #000;"> เบญจมาศ ถิ่นจันทร์ </div>
+                <div class="mb-1 fw-bold" style="color: #000;">( เบญจมาศ ถิ่นจันทร์ )</div>
                 <div class="sign-line"></div>
                 <div class="small mt-1" style="color: #000;">วันที่ ............/............/............</div>
             </div>
@@ -118,12 +133,13 @@ async function loadPRForPrint() {
 
         document.getElementById('v_pr_number').innerText = pr.pr_number;
         document.getElementById('v_created_at').innerText = new Date(pr.created_at).toLocaleDateString('th-TH');
+        
+        // [เพิ่ม] แสดงวันที่ต้องการของ
+        document.getElementById('v_required_date').innerText = new Date(pr.required_date).toLocaleDateString('th-TH');
+        
         document.getElementById('v_requester').innerText = pr.requester;
         document.getElementById('v_department').innerText = pr.department;
-        
-        // 2. เปลี่ยนสถานะเป็น "พิจารณาแล้ว"
-        document.getElementById('v_doc_status').innerText = pr.status === 'processed' ? 'พิจารณาแล้ว' : 'รออนุมัติ';
-        
+        document.getElementById('v_doc_status').innerText = pr.status === 'processed' ? 'อนุมัติเรียบร้อย' : 'รออนุมัติ';
         document.getElementById('v_remark').innerText = pr.header_remark || '-';
         document.getElementById('v_sign_requester').innerText = `${pr.requester}`;
 
@@ -159,4 +175,3 @@ window.onload = loadPRForPrint;
 </script>
 </body>
 </html>
-
