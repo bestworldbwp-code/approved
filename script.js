@@ -12,7 +12,7 @@ const CONFIG = {
     // 1. ผู้จัดการ (คุณศุภรัตน์)
     email_Step1_Manager: 'jakkidmarat@gmail.com', 
     
-    // 2. ผู้ช่วย กก. (คุณเบญจมาศ)
+    // 2. ผู้ช่วยกรรมการผู้จัดการ (คุณเบญจมาศ)
     email_Step2_AssistMD: 'bestworld.bwp328@gmail.com', 
     
     // 3. จัดซื้อ
@@ -180,7 +180,7 @@ window.openDetailModal = function(id) {
     if (currentMode === 'history') { saveBtn.style.display = 'none'; } 
     else {
         saveBtn.style.display = 'block'; saveBtn.disabled = false;
-        saveBtn.innerText = (currentUserRole === 'head') ? 'ส่งต่อให้ผู้ช่วย กก. ➡️' : '✅ อนุมัติและส่งเมล';
+        saveBtn.innerText = (currentUserRole === 'head') ? 'ผู้ช่วยกรรมการผู้จัดการ ➡️' : '✅ อนุมัติและส่งเมล';
     }
     new bootstrap.Modal(document.getElementById('detailModal')).show();
 }
@@ -197,7 +197,7 @@ function renderItemsTable() {
     let htmlRows = '';
     if (currentPR.items) {
         currentPR.items.forEach((item, index) => {
-            // [จุดแก้ไข] ถ้าเป็น "ผู้ช่วย กก." (manager) ให้ซ่อนรายการที่ "ถูกปัดตก (rejected)" ไปแล้ว
+            // [จุดแก้ไข] ถ้าเป็น "ผู้ช่วยกรรมการผู้จัดการ" (manager) ให้ซ่อนรายการที่ "ถูกปัดตก (rejected)" ไปแล้ว
             if (currentUserRole === 'manager' && item.status === 'rejected') {
                 return; // ข้ามการแสดงผลแถวนี้ไปเลย
             }
@@ -250,7 +250,7 @@ window.finalizeApproval = async function() {
             nextStatus = 'pending_manager'; 
             await db.from('purchase_requests').update({ status: nextStatus, items: currentPR.items }).eq('id', currentPR.id);
             await emailjs.send(CONFIG.emailServiceId, CONFIG.emailTemplateId_Master, { to_email: CONFIG.managerEmail, subject: `[Step 2] ผ่านการตรวจสอบแล้ว รออนุมัติ PR ${currentPR.pr_number}`, html_content: `<h3>เรียน ผู้ช่วยกรรมการผู้จัดการ (คุณเบญจมาศ),</h3><p>คุณศุภรัตน์ (ผู้จัดการ) ได้ตรวจสอบ PR เลขที่ <b>${currentPR.pr_number}</b> เรียบร้อยแล้ว</p><p>กรุณาพิจารณาอนุมัติขั้นตอนสุดท้าย: <a href="${adminLink}">คลิกที่นี่</a></p>` });
-            alert('✅ บันทึกผลแล้ว ส่งต่อให้คุณเบญจมาศเรียบร้อย!');
+            alert('✅ บันทึกผลแล้ว ส่งต่อให้ผู้ช่วยกรรมการผู้จัดการ!');
         } 
         else if (currentUserRole === 'manager') {
             nextStatus = 'processed'; 
@@ -327,3 +327,4 @@ if(document.getElementById('v_tableBody')) window.onload = loadPRForPrint;
 document.addEventListener('keydown', function(event) {
     if (event.key === 'Enter' && event.target.tagName === 'INPUT') { event.preventDefault(); return false; }
 });
+
