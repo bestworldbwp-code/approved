@@ -12,7 +12,7 @@ const CONFIG = {
     // --------------------------------------------------------
     // [จุดที่ต้องเช็ค] ใส่อีเมลจริงๆ ของทุกคนตรงนี้ครับ
     // --------------------------------------------------------
-    bossEmail: '่jakkidmara@gmail.com',         // อีเมล คุณศุภรัตน์ (คนตรวจคนแรก)
+    bossEmail: '่jakkidmarat@gmail.com',         // อีเมล คุณศุภรัตน์ (คนตรวจคนแรก)
     managerEmail: 'bestworld.bwp328@gmail.com',     // อีเมล คุณเบญจมาศ (คนอนุมัติคนที่สอง) *** เช็คบรรทัดนี้ ***
     purchasingEmail: 'hr.bpp2564@gmail.com',  // อีเมล จัดซื้อ
 
@@ -339,3 +339,4 @@ if(document.getElementById('v_tableBody')) window.onload = loadPRForPrint;
 document.addEventListener('keydown', function(event) {
     if (event.key === 'Enter' && event.target.tagName === 'INPUT') { event.preventDefault(); return false; }
 });
+
