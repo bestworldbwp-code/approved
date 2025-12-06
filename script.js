@@ -11,7 +11,7 @@ const CONFIG = {
 
     // อีเมลผู้รับ
     bossEmail: 'bestworld.bwp328@gmail.com',          // อีเมล คุณศุภรัตน์ (ผู้จัดการ)
-    managerEmail: 'manager@example.com',    // อีเมล คุณเบญจมาศ (ผู้ช่วย กก.)
+    managerEmail: '่jakkidmarat@gmail.com',    // อีเมล คุณเบญจมาศ (ผู้ช่วยกรรมการผู้จัดการ)
     purchasingEmail: 'hr.bpp2564@gmail.com',// อีเมล จัดซื้อ
 
     // รหัสผ่าน (แยกตามตำแหน่ง)
@@ -333,3 +333,4 @@ if(document.getElementById('v_tableBody')) window.onload = loadPRForPrint;
 document.addEventListener('keydown', function(event) {
     if (event.key === 'Enter' && event.target.tagName === 'INPUT') { event.preventDefault(); return false; }
 });
+
