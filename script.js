@@ -1,4 +1,4 @@
-// ================= 1. CONFIG =================
+// ================= 1. CONFIG (ตั้งค่าระบบ) =================
 const CONFIG = {
     // Supabase
     supaUrl: 'https://pufddwdcpugilwlavban.supabase.co', 
@@ -9,35 +9,34 @@ const CONFIG = {
     emailServiceId: 'service_tolm3pu',   
     emailTemplateId_Master: 'template_master', 
 
-    // อีเมลผู้รับ
-    bossEmail: 'bestworld.bwp328@gmail.com',          // อีเมล คุณศุภรัตน์ (ผู้จัดการ)
-    managerEmail: '่jakkidmarat@gmail.com',    // อีเมล คุณเบญจมาศ (ผู้ช่วยกรรมการผู้จัดการ)
-    purchasingEmail: 'hr.bpp2564@gmail.com',// อีเมล จัดซื้อ
+    // --------------------------------------------------------
+    // [จุดที่ต้องเช็ค] ใส่อีเมลจริงๆ ของทุกคนตรงนี้ครับ
+    // --------------------------------------------------------
+    bossEmail: '่jakkidmara@gmail.com',         // อีเมล คุณศุภรัตน์ (คนตรวจคนแรก)
+    managerEmail: 'bestworld.bwp328@gmail.com',     // อีเมล คุณเบญจมาศ (คนอนุมัติคนที่สอง) *** เช็คบรรทัดนี้ ***
+    purchasingEmail: 'hr.bpp2564@gmail.com',  // อีเมล จัดซื้อ
 
-    // รหัสผ่าน (แยกตามตำแหน่ง)
+    // รหัสผ่าน
     passwords: {
-        'head': '1111',    // รหัสสำหรับ คุณศุภรัตน์
-        'manager': '9999'  // รหัสสำหรับ คุณเบญจมาศ
+        'head': '1111',    // รหัส คุณศุภรัตน์
+        'manager': '9999'  // รหัส คุณเบญจมาศ
     }
 };
 
-// ================= 2. SYSTEM START =================
+// ================= 2. SYSTEM LOGIC =================
 const db = supabase.createClient(CONFIG.supaUrl, CONFIG.supaKey);
 if(typeof emailjs !== 'undefined') emailjs.init(CONFIG.emailPublicKey);
 
 let currentUserRole = sessionStorage.getItem('userRole') || ''; 
 
 document.addEventListener("DOMContentLoaded", function() {
-    // โหลด Logo
     if (typeof LOGO_BASE64 !== 'undefined') {
         document.querySelectorAll('.app-logo').forEach(img => img.src = LOGO_BASE64);
     }
 
-    // ระบบ Login Admin
     if (window.location.href.includes('admin.html')) {
         const overlay = document.getElementById('loginOverlay');
         if (overlay) {
-            // เช็คว่ามีสิทธิ์ไหม และ session ยังอยู่ไหม
             if (currentUserRole && sessionStorage.getItem('isAdmin') === 'true') {
                 overlay.style.display = 'none';
                 updateAdminUI();
@@ -49,7 +48,7 @@ document.addEventListener("DOMContentLoaded", function() {
     }
 });
 
-// Login Function
+// Login
 window.checkAdminPassword = function() {
     const input = document.getElementById('adminPassInput').value;
     if (input === CONFIG.passwords.head) {
@@ -94,7 +93,7 @@ if (prForm) {
             let publicUrl = null;
             const fileInput = document.getElementById('attachment');
             if (fileInput.files.length > 0) {
-                btn.innerText = '⏳ อัปโหลดไฟล์...';
+                btn.innerText = '⏳ กำลังอัปโหลดไฟล์...';
                 const file = fileInput.files[0];
                 const fileName = `${Date.now()}.${file.name.split('.').pop()}`;
                 const { error: upErr } = await db.storage.from('pr-files').upload(fileName, file);
@@ -102,7 +101,7 @@ if (prForm) {
                 const { data: urlData } = db.storage.from('pr-files').getPublicUrl(fileName);
                 publicUrl = urlData.publicUrl;
             }
-            btn.innerText = '⏳ บันทึกข้อมูล...';
+            btn.innerText = '⏳ กำลังบันทึก...';
             const items = [];
             document.querySelectorAll('.item-row').forEach(row => {
                 items.push({code: row.querySelector('.item-code').value, description: row.querySelector('.item-desc').value, quantity: row.querySelector('.item-qty').value, unit: row.querySelector('.item-unit').value, status: 'pending', remark: ''});
@@ -111,8 +110,12 @@ if (prForm) {
             const { error } = await db.from('purchase_requests').insert([payload]);
             if (error) throw error;
             
-            btn.innerText = '⏳ ส่งอีเมล...';
+            btn.innerText = '⏳ กำลังส่งอีเมล...';
             const adminLink = window.location.origin + '/admin.html';
+            
+            // [DEBUG] แจ้งเตือนก่อนส่ง
+            alert(`กำลังส่งเมลหาหัวหน้า (คุณศุภรัตน์) ที่: ${CONFIG.bossEmail}`);
+            
             await emailjs.send(CONFIG.emailServiceId, CONFIG.emailTemplateId_Master, { to_email: CONFIG.bossEmail, subject: `[New Request] ขอตรวจสอบ PR ${payload.pr_number}`, html_content: `<h3>เรียน ผู้จัดการ (คุณศุภรัตน์),</h3><p>มีรายการขอซื้อใหม่จาก <b>${payload.requester}</b> รอการตรวจสอบครับ</p><p>เลขที่ PR: ${payload.pr_number}</p><p><a href="${adminLink}">คลิกเพื่อเข้าสู่ระบบ</a></p>` });
             alert('✅ ส่งเรื่องเรียบร้อยแล้ว!'); window.location.reload();
         } catch (err) { console.error(err); alert('Error: ' + err.message); } finally { btn.disabled = false; btn.innerText = originalText; }
@@ -133,10 +136,8 @@ async function loadPRs() {
     const tableBody = document.getElementById('prTableBody');
     if (!tableBody) return;
     tableBody.innerHTML = '<tr><td colspan="6" class="text-center p-4">⏳ กำลังโหลด...</td></tr>';
-
     try {
         let query = db.from('purchase_requests').select('*').order('created_at', { ascending: false });
-        
         if (currentMode === 'pending') {
             if (!currentUserRole) { tableBody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">กรุณาเข้าสู่ระบบใหม่</td></tr>'; return; }
             if (currentUserRole === 'head') query = query.eq('status', 'pending_head');
@@ -145,10 +146,8 @@ async function loadPRs() {
             if (currentUserRole === 'head') query = query.neq('status', 'pending_head');
             else query = query.in('status', ['processed', 'approved', 'rejected']);
         }
-
         const { data, error } = await query;
         if (error) throw error;
-        
         allPRs = data;
         tableBody.innerHTML = '';
         if (data.length === 0) { tableBody.innerHTML = `<tr><td colspan="6" class="text-center p-5 text-muted">ไม่มีรายการ</td></tr>`; return; }
@@ -157,12 +156,10 @@ async function loadPRs() {
             const createdDate = new Date(pr.created_at).toLocaleDateString('th-TH');
             let attachBtn = pr.attachment_url ? `<a href="${pr.attachment_url}" target="_blank" class="btn btn-sm btn-outline-secondary">📎</a>` : '-';
             let actionBtn = currentMode === 'pending' ? `<button onclick="openDetailModal('${pr.id}')" class="btn btn-primary btn-sm rounded-pill px-3">🔍 ตรวจสอบ</button>` : `<button onclick="openDetailModal('${pr.id}')" class="btn btn-outline-info btn-sm rounded-pill px-3">📄 ดู</button>`;
-            
             let statusText = pr.status;
             if (pr.status === 'pending_head') statusText = 'รอ ผจก. ตรวจสอบ';
             if (pr.status === 'pending_manager') statusText = 'รอ ผช.กก. อนุมัติ';
             if (pr.status === 'processed') statusText = 'อนุมัติเรียบร้อย';
-
             const row = `<tr><td><span class="fw-bold text-primary">${pr.pr_number}</span></td><td>${createdDate}</td><td><div class="fw-bold">${pr.requester}</div><small class="text-muted">${pr.department}</small></td><td><span class="badge bg-secondary">${statusText}</span></td><td class="text-center">${attachBtn}</td><td class="text-center">${actionBtn}</td></tr>`;
             tableBody.innerHTML += row;
         });
@@ -172,22 +169,17 @@ async function loadPRs() {
 window.openDetailModal = function(id) {
     currentPR = allPRs.find(p => String(p.id) === String(id));
     if (!currentPR) return;
-
     document.getElementById('m_pr_number').innerText = currentPR.pr_number;
     document.getElementById('m_required_date').innerText = new Date(currentPR.required_date).toLocaleDateString('th-TH');
     document.getElementById('m_requester').innerText = currentPR.requester;
     document.getElementById('m_department').innerText = currentPR.department;
     document.getElementById('m_remark').innerText = currentPR.header_remark || '-';
     document.getElementById('m_attachment').innerHTML = currentPR.attachment_url ? `<a href="${currentPR.attachment_url}" target="_blank" class="btn btn-sm btn-outline-primary">📎 ดูไฟล์</a>` : '-';
-    
     renderItemsTable();
-
     const saveBtn = document.querySelector('.modal-footer .btn-success');
-    if (currentMode === 'history') {
-        saveBtn.style.display = 'none';
-    } else {
-        saveBtn.style.display = 'block';
-        saveBtn.disabled = false;
+    if (currentMode === 'history') { saveBtn.style.display = 'none'; } 
+    else {
+        saveBtn.style.display = 'block'; saveBtn.disabled = false;
         saveBtn.innerText = (currentUserRole === 'head') ? 'ส่งต่อให้ผู้ช่วย กก. ➡️' : '✅ อนุมัติและส่งเมล';
     }
     new bootstrap.Modal(document.getElementById('detailModal')).show();
@@ -196,16 +188,9 @@ window.openDetailModal = function(id) {
 function renderItemsTable() {
     const itemsTable = document.getElementById('m_itemsTable');
     if (!itemsTable) return;
-
-    // [FIX] ใช้ insertAdjacentHTML แทน innerHTML เพื่อความปลอดภัยของ DOM
-    // และแก้ให้ thead ถูกต้อง
-    const tableContainer = itemsTable.parentElement; // คือ table
+    const tableContainer = itemsTable.parentElement; 
     let thead = tableContainer.querySelector('thead');
-    if(!thead) {
-        thead = document.createElement('thead');
-        thead.className = 'table-secondary';
-        tableContainer.prepend(thead);
-    }
+    if(!thead) { thead = document.createElement('thead'); thead.className = 'table-secondary'; tableContainer.prepend(thead); }
     thead.innerHTML = `<tr><th class="text-center" width="5%"><input type="checkbox" id="selectAll" class="form-check-input" onclick="toggleSelectAll(this)" checked></th><th width="15%">รหัส</th><th>รายละเอียด</th><th class="text-center" width="10%">จำนวน</th><th class="text-center" width="10%">หน่วย</th><th width="25%">เหตุผล (ถ้าไม่อนุมัติ)</th></tr>`;
 
     let htmlRows = '';
@@ -221,11 +206,7 @@ function renderItemsTable() {
         });
     }
     itemsTable.innerHTML = htmlRows;
-    
-    if(currentMode === 'history') {
-        itemsTable.querySelectorAll('input, select').forEach(el => el.disabled = true);
-        if(document.getElementById('selectAll')) document.getElementById('selectAll').disabled = true;
-    }
+    if(currentMode === 'history') { itemsTable.querySelectorAll('input, select').forEach(el => el.disabled = true); if(document.getElementById('selectAll')) document.getElementById('selectAll').disabled = true; }
 }
 
 window.toggleSelectAll = function(source) { document.querySelectorAll('.item-checkbox').forEach(cb => { cb.checked = source.checked; toggleItem(cb, cb.dataset.index); }); }
@@ -251,18 +232,30 @@ window.finalizeApproval = async function() {
         let nextStatus = '';
         const adminLink = window.location.origin + '/admin.html';
         
+        // --- CASE 1: คุณศุภรัตน์ (Head) กด ---
         if (currentUserRole === 'head') {
             nextStatus = 'pending_manager'; 
             await db.from('purchase_requests').update({ status: nextStatus, items: currentPR.items }).eq('id', currentPR.id);
-            await emailjs.send(CONFIG.emailServiceId, CONFIG.emailTemplateId_Master, { to_email: CONFIG.managerEmail, subject: `[Step 2] ผ่านการตรวจสอบแล้ว รออนุมัติ PR ${currentPR.pr_number}`, html_content: `<h3>เรียน ผู้ช่วยกรรมการผู้จัดการ (คุณเบญจมาศ),</h3><p>คุณศุภรัตน์ (ผู้จัดการ) ได้ตรวจสอบ PR เลขที่ <b>${currentPR.pr_number}</b> เรียบร้อยแล้ว</p><p>กรุณาพิจารณาอนุมัติขั้นตอนสุดท้าย: <a href="${adminLink}">คลิกที่นี่</a></p>` });
+            
+            // [DEBUG] เช็คว่าส่งหาใคร
+            alert(`กำลังส่งเมลหาผู้ช่วย กก. (คุณเบญจมาศ) ที่: ${CONFIG.managerEmail}`);
+            
+            await emailjs.send(CONFIG.emailServiceId, CONFIG.emailTemplateId_Master, {
+                to_email: CONFIG.managerEmail,
+                subject: `[Step 2] ผ่านการตรวจสอบแล้ว รออนุมัติ PR ${currentPR.pr_number}`,
+                html_content: `<h3>เรียน ผู้ช่วยกรรมการผู้จัดการ (คุณเบญจมาศ),</h3><p>คุณศุภรัตน์ (ผู้จัดการ) ได้ตรวจสอบ PR เลขที่ <b>${currentPR.pr_number}</b> เรียบร้อยแล้ว</p><p>กรุณาพิจารณาอนุมัติขั้นตอนสุดท้าย: <a href="${adminLink}">คลิกที่นี่</a></p>`
+            });
             alert('✅ บันทึกผลแล้ว ส่งต่อให้คุณเบญจมาศเรียบร้อย!');
         } 
+        
+        // --- CASE 2: คุณเบญจมาศ (Manager) กด ---
         else if (currentUserRole === 'manager') {
             nextStatus = 'processed'; 
             await db.from('purchase_requests').update({ status: nextStatus, items: currentPR.items }).eq('id', currentPR.id);
             const printLink = window.location.origin + `/view_pr.html?id=${currentPR.id}`;
             const printApprovedLink = printLink + "&filter=approved";
 
+            // (ส่วนสร้างตาราง...)
             let fullTable = `<table style="width:100%;border-collapse:collapse;border:1px solid #ddd;"><tr style="background:#f8f9fa;"><th>รายการ</th><th>จำนวน</th><th>ผล</th></tr>`;
             let approvedTable = `<table style="width:100%;border-collapse:collapse;border:1px solid #ddd;"><tr style="background:#d1fae5;"><th>รหัส</th><th>รายการ</th><th>จำนวน</th></tr>`;
             let hasApprovedItems = false;
@@ -274,14 +267,27 @@ window.finalizeApproval = async function() {
             });
             fullTable += `</table>`; approvedTable += `</table>`;
 
+            // ส่งเมลหา Staff
             if (currentPR.email) {
-                await emailjs.send(CONFIG.emailServiceId, CONFIG.emailTemplateId_Master, { to_email: currentPR.email, subject: `[Final Result] ผลการอนุมัติ PR ${currentPR.pr_number}`, html_content: `<h3>เรียนคุณ ${currentPR.requester}</h3><p>ใบขอซื้อเลขที่ <b>${currentPR.pr_number}</b> ได้รับการอนุมัติโดย คุณเบญจมาศ ถิ่นจันทร์ แล้ว</p>${fullTable}<br><a href="${printLink}">ดูรายละเอียด</a>` });
+                await emailjs.send(CONFIG.emailServiceId, CONFIG.emailTemplateId_Master, {
+                    to_email: currentPR.email,
+                    subject: `[Final Result] ผลการอนุมัติ PR ${currentPR.pr_number}`,
+                    html_content: `<h3>เรียนคุณ ${currentPR.requester}</h3><p>ใบขอซื้อเลขที่ <b>${currentPR.pr_number}</b> ได้รับการอนุมัติโดย คุณเบญจมาศ ถิ่นจันทร์ แล้ว</p>${fullTable}<br><a href="${printLink}">ดูรายละเอียด</a>`
+                });
             }
+
+            // ส่งเมลหา จัดซื้อ
             if (hasApprovedItems && CONFIG.purchasingEmail) {
-                await emailjs.send(CONFIG.emailServiceId, CONFIG.emailTemplateId_Master, { to_email: CONFIG.purchasingEmail, subject: `[Approved] สั่งซื้อสินค้า PR ${currentPR.pr_number}`, html_content: `<h3>เรียน ฝ่ายจัดซื้อ</h3><p>รายการ PR ${currentPR.pr_number} อนุมัติโดย คุณเบญจมาศ แล้ว</p><hr><p><b>1. รายการที่อนุมัติ (สำหรับสั่งซื้อ):</b></p>${approvedTable}<br><a href="${printApprovedLink}" style="background:green;color:white;padding:10px;text-decoration:none;border-radius:5px;">🛒 พิมพ์ใบสั่งซื้อ (เฉพาะอนุมัติ)</a><br><br><hr><p><b>2. รายการทั้งหมด (รวมไม่อนุมัติ):</b></p>${fullTable}<br><a href="${printLink}" style="background:gray;color:white;padding:10px;text-decoration:none;border-radius:5px;">📄 ดูประวัติทั้งหมด</a>` });
+                alert(`กำลังส่งเมลหาจัดซื้อ ที่: ${CONFIG.purchasingEmail}`);
+                await emailjs.send(CONFIG.emailServiceId, CONFIG.emailTemplateId_Master, {
+                    to_email: CONFIG.purchasingEmail,
+                    subject: `[Approved] สั่งซื้อสินค้า PR ${currentPR.pr_number}`,
+                    html_content: `<h3>เรียน ฝ่ายจัดซื้อ</h3><p>รายการ PR ${currentPR.pr_number} อนุมัติโดย คุณเบญจมาศ แล้ว</p><hr><p><b>1. รายการที่อนุมัติ (สำหรับสั่งซื้อ):</b></p>${approvedTable}<br><a href="${printApprovedLink}" style="background:green;color:white;padding:10px;text-decoration:none;border-radius:5px;">🛒 พิมพ์ใบสั่งซื้อ (เฉพาะอนุมัติ)</a><br><br><p><b>2. รายการทั้งหมด (รวมไม่อนุมัติ):</b></p><a href="${printLink}" style="background:gray;color:white;padding:10px;text-decoration:none;border-radius:5px;">📄 ดูประวัติทั้งหมด</a>`
+                });
             }
             alert('✅ อนุมัติจบงานและส่งเรื่องให้จัดซื้อเรียบร้อย!');
         }
+
         bootstrap.Modal.getInstance(document.getElementById('detailModal')).hide();
         loadPRs();
     } catch (err) { console.error(err); alert('Error: ' + err.message); if(btn) btn.disabled = false; }
@@ -328,9 +334,8 @@ async function loadPRForPrint() {
 }
 
 if(document.getElementById('v_tableBody')) window.onload = loadPRForPrint;
-// ไม่ต้องใส่ onload loadPRs เพราะ Login จัดการแล้ว
+// if(document.getElementById('prTableBody')) window.onload = loadPRs; // ไม่ต้องใส่
 
 document.addEventListener('keydown', function(event) {
     if (event.key === 'Enter' && event.target.tagName === 'INPUT') { event.preventDefault(); return false; }
 });
-
