@@ -30,12 +30,10 @@ if(typeof emailjs !== 'undefined') emailjs.init(CONFIG.emailPublicKey);
 let currentUserRole = sessionStorage.getItem('userRole') || ''; 
 
 document.addEventListener("DOMContentLoaded", function() {
-    // โหลด Logo
     if (typeof LOGO_BASE64 !== 'undefined') {
         document.querySelectorAll('.app-logo').forEach(img => img.src = LOGO_BASE64);
     }
 
-    // ระบบ Login Admin
     if (window.location.href.includes('admin.html')) {
         const overlay = document.getElementById('loginOverlay');
         if (overlay) {
@@ -50,7 +48,6 @@ document.addEventListener("DOMContentLoaded", function() {
     }
 });
 
-// Login Function
 window.checkAdminPassword = function() {
     const input = document.getElementById('adminPassInput').value;
     if (input === CONFIG.passwords.head) {
@@ -116,7 +113,6 @@ if (prForm) {
             btn.innerText = '⏳ ส่งอีเมล...';
             const adminLink = window.location.origin + '/admin.html';
             
-            // [แก้ไข] ใช้ bossEmail ที่ตั้งค่าไว้ (คุณศุภรัตน์)
             await emailjs.send(CONFIG.emailServiceId, CONFIG.emailTemplateId_Master, { 
                 to_email: CONFIG.bossEmail, 
                 subject: `[New Request] ขอตรวจสอบ PR ${payload.pr_number}`, 
@@ -202,6 +198,12 @@ function renderItemsTable() {
     let htmlRows = '';
     if (currentPR.items) {
         currentPR.items.forEach((item, index) => {
+            // [NEW] กรองรายการสำหรับผู้จัดการ (คุณเบญจมาศ)
+            // ถ้าเป็นผู้จัดการ และ รายการนั้นถูกหัวหน้าปัดตกไปแล้ว (rejected) --> ซ่อนทิ้งไปเลย
+            if (currentUserRole === 'manager' && item.status === 'rejected') {
+                return; // ข้าม ไม่สร้างแถวนี้
+            }
+
             const isChecked = (item.status === 'approved' || item.status === 'pending');
             const reasonStyle = isChecked ? 'display:none;' : 'display:block;';
             const statusStyle = isChecked ? 'display:inline;' : 'display:none;';
@@ -243,8 +245,6 @@ window.finalizeApproval = async function() {
         if (currentUserRole === 'head') {
             nextStatus = 'pending_manager'; 
             await db.from('purchase_requests').update({ status: nextStatus, items: currentPR.items }).eq('id', currentPR.id);
-            
-            // [แก้ไข] ส่งหา คุณเบญจมาศ (managerEmail)
             await emailjs.send(CONFIG.emailServiceId, CONFIG.emailTemplateId_Master, { 
                 to_email: CONFIG.managerEmail, 
                 subject: `[Step 2] ผ่านการตรวจสอบแล้ว รออนุมัติ PR ${currentPR.pr_number}`, 
@@ -272,13 +272,11 @@ window.finalizeApproval = async function() {
             if (currentPR.email) {
                 await emailjs.send(CONFIG.emailServiceId, CONFIG.emailTemplateId_Master, { to_email: currentPR.email, subject: `[Final Result] ผลการอนุมัติ PR ${currentPR.pr_number}`, html_content: `<h3>เรียนคุณ ${currentPR.requester}</h3><p>ใบขอซื้อเลขที่ <b>${currentPR.pr_number}</b> ได้รับการอนุมัติโดย คุณเบญจมาศ ถิ่นจันทร์ แล้ว</p>${fullTable}<br><a href="${printLink}">ดูรายละเอียด</a>` });
             }
-            
-            // [แก้ไข] ส่งหา จัดซื้อ (purchasingEmail)
             if (hasApprovedItems && CONFIG.purchasingEmail) {
                 await emailjs.send(CONFIG.emailServiceId, CONFIG.emailTemplateId_Master, { 
                     to_email: CONFIG.purchasingEmail, 
                     subject: `[Approved] สั่งซื้อสินค้า PR ${currentPR.pr_number}`, 
-                    html_content: `<h3>เรียน ฝ่ายจัดซื้อ</h3><p>รายการ PR ${currentPR.pr_number} อนุมัติโดย คุณเบญจมาศ แล้ว</p><hr><p><b>1. รายการที่อนุมัติ (สำหรับสั่งซื้อ):</b></p>${approvedTable}<br><a href="${printApprovedLink}" style="background:green;color:white;padding:10px;text-decoration:none;border-radius:5px;">🛒 พิมพ์ใบสั่งซื้อ (เฉพาะอนุมัติ)</a><br><br><hr><p><b>2. รายการทั้งหมด (รวมไม่อนุมัติ):</b></p><a href="${printLink}" style="background:gray;color:white;padding:10px;text-decoration:none;border-radius:5px;">📄 ดูประวัติทั้งหมด</a>` 
+                    html_content: `<h3>เรียน ฝ่ายจัดซื้อ</h3><p>รายการ PR ${currentPR.pr_number} อนุมัติโดย คุณเบญจมาศ แล้ว</p><hr><p><b>1. รายการที่อนุมัติ (สำหรับสั่งซื้อ):</b></p>${approvedTable}<br><a href="${printApprovedLink}" style="background:green;color:white;padding:10px;text-decoration:none;border-radius:5px;">🛒 พิมพ์ใบสั่งซื้อ (เฉพาะอนุมัติ)</a><br><br><p><b>2. รายการทั้งหมด (รวมไม่อนุมัติ):</b></p><a href="${printLink}" style="background:gray;color:white;padding:10px;text-decoration:none;border-radius:5px;">📄 ดูประวัติทั้งหมด</a>` 
                 });
             }
             alert('✅ อนุมัติจบงานและส่งเรื่องให้จัดซื้อเรียบร้อย!');
