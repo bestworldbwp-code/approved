@@ -1,41 +1,41 @@
 // ================= 1. CONFIG (ตั้งค่าระบบ) =================
 const CONFIG = {
-    // Supabase & EmailJS
+    // Supabase
     supaUrl: 'https://pufddwdcpugilwlavban.supabase.co', 
     supaKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB1ZmRkd2RjcHVnaWx3bGF2YmFuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkzODY1MDUsImV4cCI6MjA3NDk2MjUwNX0.6dyYteDu6QSkTL9hIiaHw_2WeltSGSIoMSvx3OcEjN0', 
+    
+    // EmailJS
     emailPublicKey: 'rEly1Il6Xz0qZwaSc',   
     emailServiceId: 'service_tolm3pu',   
     emailTemplateId_Master: 'template_master', 
 
-    // --------------------------------------------------------
-    // [ลำดับการอนุมัติ]
-    // 1. ผู้จัดการ (คุณศุภรัตน์)
-    email_Step1_Manager: 'jakkidmarat@gmail.com', 
-    
-    // 2. ผู้ช่วยกรรมการผู้จัดการ (คุณเบญจมาศ)
-    email_Step2_AssistMD: 'bestworld.bwp328@gmail.com', 
-    
-    // 3. จัดซื้อ
-    email_Step3_Purchasing: 'hr.bpp.2564@gmail.com',
-    // --------------------------------------------------------
+    // ------------------------------------------------------------------
+    // [แก้ไขแล้ว] ใส่อีเมลจริงของคุณให้แล้วครับ (เช็คความถูกต้องอีกทีนะครับ)
+    // ------------------------------------------------------------------
+    bossEmail: 'jakkidmarat@gmail.com',          // คุณศุภรัตน์ (ผู้จัดการ)
+    managerEmail: 'bestworld.bwp328@gmail.com',  // คุณเบญจมาศ (ผู้ช่วย กก.)
+    purchasingEmail: 'hr.bpp.2564@gmail.com',    // ฝ่ายจัดซื้อ
 
-    // รหัสผ่านแยกตามตำแหน่ง
+    // รหัสผ่าน
     passwords: {
-        'manager': '1111',      // รหัส คุณศุภรัตน์ (Manager)
-        'assist_md': '9999'     // รหัส คุณเบญจมาศ (Assistant MD)
+        'head': '1111',    // รหัส คุณศุภรัตน์
+        'manager': '9999'  // รหัส คุณเบญจมาศ
     }
 };
 
-// ================= 2. SYSTEM LOGIC =================
+// ================= 2. SYSTEM START =================
 const db = supabase.createClient(CONFIG.supaUrl, CONFIG.supaKey);
 if(typeof emailjs !== 'undefined') emailjs.init(CONFIG.emailPublicKey);
 
 let currentUserRole = sessionStorage.getItem('userRole') || ''; 
 
 document.addEventListener("DOMContentLoaded", function() {
+    // โหลด Logo
     if (typeof LOGO_BASE64 !== 'undefined') {
         document.querySelectorAll('.app-logo').forEach(img => img.src = LOGO_BASE64);
     }
+
+    // ระบบ Login Admin
     if (window.location.href.includes('admin.html')) {
         const overlay = document.getElementById('loginOverlay');
         if (overlay) {
@@ -50,6 +50,7 @@ document.addEventListener("DOMContentLoaded", function() {
     }
 });
 
+// Login Function
 window.checkAdminPassword = function() {
     const input = document.getElementById('adminPassInput').value;
     if (input === CONFIG.passwords.head) {
@@ -114,7 +115,14 @@ if (prForm) {
             
             btn.innerText = '⏳ ส่งอีเมล...';
             const adminLink = window.location.origin + '/admin.html';
-            await emailjs.send(CONFIG.emailServiceId, CONFIG.emailTemplateId_Master, { to_email: CONFIG.bossEmail, subject: `[New Request] ขอตรวจสอบ PR ${payload.pr_number}`, html_content: `<h3>เรียน ผู้จัดการ (คุณศุภรัตน์),</h3><p>มีรายการขอซื้อใหม่จาก <b>${payload.requester}</b> รอการตรวจสอบครับ</p><p>เลขที่ PR: ${payload.pr_number}</p><p><a href="${adminLink}">คลิกเพื่อเข้าสู่ระบบ</a></p>` });
+            
+            // [แก้ไข] ใช้ bossEmail ที่ตั้งค่าไว้ (คุณศุภรัตน์)
+            await emailjs.send(CONFIG.emailServiceId, CONFIG.emailTemplateId_Master, { 
+                to_email: CONFIG.bossEmail, 
+                subject: `[New Request] ขอตรวจสอบ PR ${payload.pr_number}`, 
+                html_content: `<h3>เรียน ผู้จัดการ (คุณศุภรัตน์),</h3><p>มีรายการขอซื้อใหม่จาก <b>${payload.requester}</b> รอการตรวจสอบครับ</p><p>เลขที่ PR: ${payload.pr_number}</p><p><a href="${adminLink}">คลิกเพื่อเข้าสู่ระบบ</a></p>` 
+            });
+            
             alert('✅ ส่งเรื่องเรียบร้อยแล้ว!'); window.location.reload();
         } catch (err) { console.error(err); alert('Error: ' + err.message); } finally { btn.disabled = false; btn.innerText = originalText; }
     });
@@ -173,14 +181,12 @@ window.openDetailModal = function(id) {
     document.getElementById('m_department').innerText = currentPR.department;
     document.getElementById('m_remark').innerText = currentPR.header_remark || '-';
     document.getElementById('m_attachment').innerHTML = currentPR.attachment_url ? `<a href="${currentPR.attachment_url}" target="_blank" class="btn btn-sm btn-outline-primary">📎 ดูไฟล์</a>` : '-';
-    
     renderItemsTable();
-
     const saveBtn = document.querySelector('.modal-footer .btn-success');
     if (currentMode === 'history') { saveBtn.style.display = 'none'; } 
     else {
         saveBtn.style.display = 'block'; saveBtn.disabled = false;
-        saveBtn.innerText = (currentUserRole === 'head') ? 'ผู้ช่วยกรรมการผู้จัดการ ➡️' : '✅ อนุมัติและส่งเมล';
+        saveBtn.innerText = (currentUserRole === 'head') ? 'ส่งต่อให้ผู้ช่วย กก. ➡️' : '✅ อนุมัติและส่งเมล';
     }
     new bootstrap.Modal(document.getElementById('detailModal')).show();
 }
@@ -191,17 +197,11 @@ function renderItemsTable() {
     const tableContainer = itemsTable.parentElement; 
     let thead = tableContainer.querySelector('thead');
     if(!thead) { thead = document.createElement('thead'); thead.className = 'table-secondary'; tableContainer.prepend(thead); }
-    
     thead.innerHTML = `<tr><th class="text-center" width="5%"><input type="checkbox" id="selectAll" class="form-check-input" onclick="toggleSelectAll(this)" checked></th><th width="15%">รหัส</th><th>รายละเอียด</th><th class="text-center" width="10%">จำนวน</th><th class="text-center" width="10%">หน่วย</th><th width="25%">เหตุผล (ถ้าไม่อนุมัติ)</th></tr>`;
 
     let htmlRows = '';
     if (currentPR.items) {
         currentPR.items.forEach((item, index) => {
-            // [จุดแก้ไข] ถ้าเป็น "ผู้ช่วยกรรมการผู้จัดการ" (manager) ให้ซ่อนรายการที่ "ถูกปัดตก (rejected)" ไปแล้ว
-            if (currentUserRole === 'manager' && item.status === 'rejected') {
-                return; // ข้ามการแสดงผลแถวนี้ไปเลย
-            }
-
             const isChecked = (item.status === 'approved' || item.status === 'pending');
             const reasonStyle = isChecked ? 'display:none;' : 'display:block;';
             const statusStyle = isChecked ? 'display:inline;' : 'display:none;';
@@ -211,14 +211,7 @@ function renderItemsTable() {
             htmlRows += `<tr id="tr-item-${index}" class="${rowClass}"><td class="text-center"><input type="checkbox" class="form-check-input item-checkbox" data-index="${index}" onchange="toggleItem(this, ${index})" ${isChecked ? 'checked' : ''}></td><td>${item.code || '-'}</td><td>${item.description}</td><td class="text-center">${item.quantity} ${item.unit || ''}</td><td class="text-center">${item.unit}</td><td><input type="text" class="form-control form-control-sm item-reason" id="reason-${index}" placeholder="เหตุผล..." value="${reasonVal}" style="${reasonStyle}"><span id="status-text-${index}" class="text-success small fw-bold" style="${statusStyle}">✅ อนุมัติ</span></td></tr>`;
         });
     }
-    
-    // ถ้าไม่มีรายการเหลือเลย (โดนปัดตกหมด)
-    if (htmlRows === '') {
-        htmlRows = '<tr><td colspan="6" class="text-center p-3 text-muted">ไม่พบรายการที่ต้องอนุมัติ (รายการอาจถูกปัดตกไปแล้ว)</td></tr>';
-    }
-
     itemsTable.innerHTML = htmlRows;
-    
     if(currentMode === 'history') {
         itemsTable.querySelectorAll('input, select').forEach(el => el.disabled = true);
         if(document.getElementById('selectAll')) document.getElementById('selectAll').disabled = true;
@@ -227,6 +220,7 @@ function renderItemsTable() {
 window.toggleSelectAll = function(source) { document.querySelectorAll('.item-checkbox').forEach(cb => { cb.checked = source.checked; toggleItem(cb, cb.dataset.index); }); }
 window.toggleItem = function(checkbox, index) { const reasonInput = document.getElementById(`reason-${index}`); const statusText = document.getElementById(`status-text-${index}`); const row = document.getElementById(`tr-item-${index}`); if (checkbox.checked) { reasonInput.style.display = 'none'; statusText.style.display = 'inline'; row.classList.remove('table-danger'); } else { reasonInput.style.display = 'block'; reasonInput.focus(); statusText.style.display = 'none'; row.classList.add('table-danger'); } }
 
+// ================= 3. FINAL APPROVAL LOGIC =================
 window.finalizeApproval = async function() {
     const checkboxes = document.querySelectorAll('.item-checkbox');
     let hasRejectedWithoutReason = false;
@@ -249,8 +243,14 @@ window.finalizeApproval = async function() {
         if (currentUserRole === 'head') {
             nextStatus = 'pending_manager'; 
             await db.from('purchase_requests').update({ status: nextStatus, items: currentPR.items }).eq('id', currentPR.id);
-            await emailjs.send(CONFIG.emailServiceId, CONFIG.emailTemplateId_Master, { to_email: CONFIG.managerEmail, subject: `[Step 2] ผ่านการตรวจสอบแล้ว รออนุมัติ PR ${currentPR.pr_number}`, html_content: `<h3>เรียน ผู้ช่วยกรรมการผู้จัดการ (คุณเบญจมาศ),</h3><p>คุณศุภรัตน์ (ผู้จัดการ) ได้ตรวจสอบ PR เลขที่ <b>${currentPR.pr_number}</b> เรียบร้อยแล้ว</p><p>กรุณาพิจารณาอนุมัติขั้นตอนสุดท้าย: <a href="${adminLink}">คลิกที่นี่</a></p>` });
-            alert('✅ บันทึกผลแล้ว ส่งต่อให้ผู้ช่วยกรรมการผู้จัดการ!');
+            
+            // [แก้ไข] ส่งหา คุณเบญจมาศ (managerEmail)
+            await emailjs.send(CONFIG.emailServiceId, CONFIG.emailTemplateId_Master, { 
+                to_email: CONFIG.managerEmail, 
+                subject: `[Step 2] ผ่านการตรวจสอบแล้ว รออนุมัติ PR ${currentPR.pr_number}`, 
+                html_content: `<h3>เรียน ผู้ช่วยกรรมการผู้จัดการ (คุณเบญจมาศ),</h3><p>คุณศุภรัตน์ (ผู้จัดการ) ได้ตรวจสอบ PR เลขที่ <b>${currentPR.pr_number}</b> เรียบร้อยแล้ว</p><p>กรุณาพิจารณาอนุมัติขั้นตอนสุดท้าย: <a href="${adminLink}">คลิกที่นี่</a></p>` 
+            });
+            alert('✅ บันทึกผลแล้ว ส่งต่อให้คุณเบญจมาศเรียบร้อย!');
         } 
         else if (currentUserRole === 'manager') {
             nextStatus = 'processed'; 
@@ -272,8 +272,14 @@ window.finalizeApproval = async function() {
             if (currentPR.email) {
                 await emailjs.send(CONFIG.emailServiceId, CONFIG.emailTemplateId_Master, { to_email: currentPR.email, subject: `[Final Result] ผลการอนุมัติ PR ${currentPR.pr_number}`, html_content: `<h3>เรียนคุณ ${currentPR.requester}</h3><p>ใบขอซื้อเลขที่ <b>${currentPR.pr_number}</b> ได้รับการอนุมัติโดย คุณเบญจมาศ ถิ่นจันทร์ แล้ว</p>${fullTable}<br><a href="${printLink}">ดูรายละเอียด</a>` });
             }
+            
+            // [แก้ไข] ส่งหา จัดซื้อ (purchasingEmail)
             if (hasApprovedItems && CONFIG.purchasingEmail) {
-                await emailjs.send(CONFIG.emailServiceId, CONFIG.emailTemplateId_Master, { to_email: CONFIG.purchasingEmail, subject: `[Approved] สั่งซื้อสินค้า PR ${currentPR.pr_number}`, html_content: `<h3>เรียน ฝ่ายจัดซื้อ</h3><p>รายการ PR ${currentPR.pr_number} อนุมัติโดย คุณเบญจมาศ แล้ว</p><hr><p><b>1. รายการที่อนุมัติ (สำหรับสั่งซื้อ):</b></p>${approvedTable}<br><a href="${printApprovedLink}" style="background:green;color:white;padding:10px;text-decoration:none;border-radius:5px;">🛒 พิมพ์ใบสั่งซื้อ (เฉพาะอนุมัติ)</a><br><br><p><b>2. รายการทั้งหมด:</b></p><a href="${printLink}" style="background:gray;color:white;padding:10px;text-decoration:none;border-radius:5px;">📄 ดูประวัติทั้งหมด</a>` });
+                await emailjs.send(CONFIG.emailServiceId, CONFIG.emailTemplateId_Master, { 
+                    to_email: CONFIG.purchasingEmail, 
+                    subject: `[Approved] สั่งซื้อสินค้า PR ${currentPR.pr_number}`, 
+                    html_content: `<h3>เรียน ฝ่ายจัดซื้อ</h3><p>รายการ PR ${currentPR.pr_number} อนุมัติโดย คุณเบญจมาศ แล้ว</p><hr><p><b>1. รายการที่อนุมัติ (สำหรับสั่งซื้อ):</b></p>${approvedTable}<br><a href="${printApprovedLink}" style="background:green;color:white;padding:10px;text-decoration:none;border-radius:5px;">🛒 พิมพ์ใบสั่งซื้อ (เฉพาะอนุมัติ)</a><br><br><hr><p><b>2. รายการทั้งหมด (รวมไม่อนุมัติ):</b></p><a href="${printLink}" style="background:gray;color:white;padding:10px;text-decoration:none;border-radius:5px;">📄 ดูประวัติทั้งหมด</a>` 
+                });
             }
             alert('✅ อนุมัติจบงานและส่งเรื่องให้จัดซื้อเรียบร้อย!');
         }
@@ -327,4 +333,3 @@ if(document.getElementById('v_tableBody')) window.onload = loadPRForPrint;
 document.addEventListener('keydown', function(event) {
     if (event.key === 'Enter' && event.target.tagName === 'INPUT') { event.preventDefault(); return false; }
 });
-
